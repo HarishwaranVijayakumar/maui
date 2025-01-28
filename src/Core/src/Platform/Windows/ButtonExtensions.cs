@@ -182,7 +182,8 @@ namespace Microsoft.Maui.Platform
 						var actualImageSource = sender as BitmapImage;
 						if (actualImageSource is not null)
 						{
-							nativeImage.MaxHeight = nativeImageSource.GetImageSourceSize(platformButton).Height;
+							if(platformButton.Height is double.NaN)
+								platformButton.MaxHeight= nativeImageSource.GetImageSourceSize(platformButton).Height;
 						}
 					}
 				}
