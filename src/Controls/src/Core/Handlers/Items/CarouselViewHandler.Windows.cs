@@ -19,6 +19,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 {
 	public partial class CarouselViewHandler : ItemsViewHandler<CarouselView>
 	{
+		int _gotoPosition = -1;
 		LoopableCollectionView _loopableCollectionView;
 		ScrollViewer _scrollViewer;
 		WScrollBarVisibility? _horizontalScrollBarVisibilityWithoutLoop;
@@ -30,7 +31,9 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		~CarouselViewHandler() => _proxy.Unsubscribe();
 
-		protected override IItemsLayout Layout { get; }
+		protected override IItemsLayout Layout => ItemsView?.ItemsLayout;
+		//protected override IItemsLayout Layout { get; }
+
 
 		LinearItemsLayout CarouselItemsLayout => ItemsView?.ItemsLayout;
 		WDataTemplate CarouselItemsViewTemplate => (WDataTemplate)WApp.Current.Resources["CarouselItemsViewDefaultTemplate"];
@@ -315,9 +318,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				return;
 
 			var currentPosition = ItemsView.Position;
-
-			if (currentPosition != position)
+			if (_gotoPosition == -1 && currentPosition != position)
+			{
 				ItemsView.Position = position;
+			}
+			_gotoPosition = -1;
 		}
 
 		void SetCarouselViewCurrentItem(int carouselPosition)
@@ -391,12 +396,16 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		{
 			if (CollectionViewSource == null)
 				return;
-
+			var currentItemPosition = GetItemPositionInCarousel(ItemsView.CurrentItem);
 			var carouselPosition = ItemsView.Position;
 
 			if (carouselPosition < 0 || carouselPosition >= ItemCount)
 				return;
-
+			if (_gotoPosition == -1 && currentItemPosition != carouselPosition)
+			{
+				_gotoPosition = carouselPosition;
+				ItemsView.ScrollTo(carouselPosition, position: ScrollToPosition.Center, animate: ItemsView.AnimateCurrentItemChanges);
+			}
 			SetCarouselViewCurrentItem(carouselPosition);
 		}
 
