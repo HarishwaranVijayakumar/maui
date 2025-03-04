@@ -38,6 +38,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateValue(this Slider nativeSlider, ISlider slider)
 		{
+			slider.Value = Math.Clamp(slider.Value, slider.Minimum, slider.Maximum);
 			if (nativeSlider.Value != slider.Value)
 				nativeSlider.Value = slider.Value;
 		}

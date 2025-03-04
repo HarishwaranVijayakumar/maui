@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Android.Content.Res;
 using Android.Graphics;
 using Android.Util;
@@ -16,6 +17,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateValue(this SeekBar seekBar, ISlider slider)
 		{
+			slider.Value = Math.Clamp(slider.Value, slider.Minimum, slider.Maximum);
 			var min = slider.Minimum;
 			var max = slider.Maximum;
 			var value = slider.Value;

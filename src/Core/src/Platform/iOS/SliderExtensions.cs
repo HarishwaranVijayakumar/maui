@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using ObjCRuntime;
 using UIKit;
@@ -19,6 +20,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateValue(this UISlider uiSlider, ISlider slider)
 		{
+			slider.Value = Math.Clamp(slider.Value, slider.Minimum, slider.Maximum);
 			if ((float)slider.Value != uiSlider.Value)
 				uiSlider.Value = (float)slider.Value;
 		}
