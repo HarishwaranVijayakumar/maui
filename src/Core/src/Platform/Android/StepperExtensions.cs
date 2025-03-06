@@ -1,4 +1,5 @@
-﻿using Android.Widget;
+﻿using System;
+using Android.Widget;
 using AButton = Android.Widget.Button;
 
 namespace Microsoft.Maui.Platform
@@ -22,6 +23,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateValue(this MauiStepper linearLayout, IStepper stepper)
 		{
+			stepper.Value = Math.Clamp(stepper.Value, stepper.Minimum, stepper.Maximum);
 			UpdateButtons(linearLayout, stepper);
 		}
 

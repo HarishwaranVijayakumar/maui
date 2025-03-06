@@ -16,7 +16,9 @@ namespace Microsoft.Maui.Controls
 			coerceValue: (bindable, value) =>
 			{
 				var stepper = (Stepper)bindable;
-				stepper.Value = stepper.Value.Clamp(stepper.Minimum, (double)value);
+				// stepper.Value = stepper.Value.Clamp(stepper.Minimum, (double)value);
+				if ((double)value < stepper.Value)
+					stepper.Value = Math.Min((double)value, stepper.Value);
 				return value;
 			});
 
@@ -26,7 +28,9 @@ namespace Microsoft.Maui.Controls
 			coerceValue: (bindable, value) =>
 			{
 				var stepper = (Stepper)bindable;
-				stepper.Value = stepper.Value.Clamp((double)value, stepper.Maximum);
+				// stepper.Value = stepper.Value.Clamp((double)value, stepper.Maximum);
+				if ((double)value > stepper.Value)
+					stepper.Value = Math.Max((double)value, stepper.Value);
 				return value;
 			});
 
@@ -35,7 +39,7 @@ namespace Microsoft.Maui.Controls
 			coerceValue: (bindable, value) =>
 			{
 				var stepper = (Stepper)bindable;
-				return Math.Round(((double)value), stepper.digits).Clamp(stepper.Minimum, stepper.Maximum);
+				return value;
 			},
 			propertyChanged: (bindable, oldValue, newValue) =>
 			{

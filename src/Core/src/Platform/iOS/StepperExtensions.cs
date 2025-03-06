@@ -1,4 +1,5 @@
-﻿using ObjCRuntime;
+﻿using System;
+using ObjCRuntime;
 using UIKit;
 
 namespace Microsoft.Maui.Platform
@@ -25,6 +26,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateValue(this UIStepper platformStepper, IStepper stepper)
 		{
+			stepper.Value = Math.Clamp(stepper.Value, stepper.Minimum, stepper.Maximum);
 			if (platformStepper.Value != stepper.Value)
 				platformStepper.Value = stepper.Value;
 		}
