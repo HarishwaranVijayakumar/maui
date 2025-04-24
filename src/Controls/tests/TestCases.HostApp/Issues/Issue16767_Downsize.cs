@@ -62,18 +62,18 @@ public class Issue16767_DownsizeDrawable : IDrawable
 			canvas.DrawString("Downsize (100, 200)", 0, currentY, dirtyRect.Width, 30, HorizontalAlignment.Left, VerticalAlignment.Top);
 			currentY += 30;
 
-			var resized1 = image.Downsize(100, 200);
-			canvas.SetFillImage(resized1);
-			canvas.FillRectangle(0, currentY, 240, resized1.Height);
-			currentY += resized1.Height + spacing;
+			var downsized1 = image.Downsize(100, 200);
+			canvas.SetFillImage(downsized1);
+			canvas.FillRectangle(0, currentY, 240, downsized1.Height);
+			currentY += downsized1.Height + spacing;
 
 			// Label before second image
 			canvas.DrawString("Downsize (100)", 0, currentY, dirtyRect.Width, 30, HorizontalAlignment.Left, VerticalAlignment.Top);
 			currentY += 30;
 
-			var resized2 = image.Downsize(100);
-			canvas.SetFillImage(resized2);
-			canvas.FillRectangle(0, currentY, 240, resized2.Height);
+			var downsized2 = image.Downsize(100);
+			canvas.SetFillImage(downsized2);
+			canvas.FillRectangle(0, currentY, 240, downsized2.Height);
 		}
 	}
 }
