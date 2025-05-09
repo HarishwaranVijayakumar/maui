@@ -85,7 +85,7 @@ namespace Microsoft.Maui.Graphics.Platform
 
 				saveTask.ContinueWith(task =>
 				{
-					if (task.Exception != null)
+					if (task.Exception is not null)
 					{
 						saveException = task.Exception;
 					}
@@ -97,7 +97,7 @@ namespace Microsoft.Maui.Graphics.Platform
 				saveCompletedEvent.Wait();
 
 				// Check for any exceptions during the async operation
-				if (saveException != null)
+				if (saveException is not null)
 				{
 					throw saveException;
 				}
