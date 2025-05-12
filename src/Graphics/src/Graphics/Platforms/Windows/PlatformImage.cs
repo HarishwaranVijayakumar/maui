@@ -65,9 +65,9 @@ namespace Microsoft.Maui.Graphics.Platform
 			return ResizeInternal(maxWidth, maxHeight, 0, 0, maxWidth, maxHeight, disposeOriginal);
 		}
 
-		
+
 		IImage ResizeInternal(float canvasWidth, float canvasHeight, float drawX, float drawY, float drawWidth, float drawHeight, bool disposeOriginal)
-		{ 
+		{
 			using var renderTarget = new CanvasRenderTarget(_creator, canvasWidth, canvasHeight, _bitmap.Dpi);
 
 			using (var drawingSession = renderTarget.CreateDrawingSession())
@@ -77,10 +77,31 @@ namespace Microsoft.Maui.Graphics.Platform
 
 			using (var resizedStream = new InMemoryRandomAccessStream())
 			{
-				renderTarget.SaveAsync(resizedStream, CanvasBitmapFileFormat.Png)
-					.AsTask()
-					.GetAwaiter()
-					.GetResult();
+				var saveCompletedEvent = new ManualResetEventSlim(false);
+				Exception saveException = null;
+
+				// Start the async save operation
+				var saveTask = renderTarget.SaveAsync(resizedStream, CanvasBitmapFileFormat.Png).AsTask();
+
+				saveTask.ContinueWith(task =>
+				{
+					if (task.Exception is not null)
+					{
+						saveException = task.Exception;
+					}
+					// Signal that the operation is complete
+					saveCompletedEvent.Set();
+				});
+
+				// Wait for the signal
+				saveCompletedEvent.Wait();
+
+				// Check for any exceptions during the async operation
+				if (saveException is not null)
+				{
+					throw saveException;
+				}
+
 				resizedStream.Seek(0);
 
 				var newImage = FromStream(resizedStream.AsStreamForRead());
@@ -92,7 +113,6 @@ namespace Microsoft.Maui.Graphics.Platform
 
 				return newImage;
 			}
-		}
 
 		public IImage Resize(float width, float height, ResizeMode resizeMode = ResizeMode.Fit,
 			bool disposeOriginal = false)
