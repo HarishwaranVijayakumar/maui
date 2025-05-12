@@ -101,10 +101,7 @@ namespace Microsoft.Maui.Graphics.Platform
 				{
 					throw saveException;
 				}
-				//renderTarget.SaveAsync(resizedStream, CanvasBitmapFileFormat.Png)
-				//	.AsTask()
-				//	.GetAwaiter()
-				//	.GetResult();
+
 				resizedStream.Seek(0);
 
 				var newImage = FromStream(resizedStream.AsStreamForRead());
