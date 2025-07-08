@@ -11,7 +11,7 @@ public class Issue16767_Resize : _IssuesUITest
 	}
 
 	public override string Issue => "Resize function in W2DImage class";
-
+	protected override bool ResetAfterEachTest => true;
 	[Test]
 	[Category(UITestCategories.GraphicsView)]
 	public void ImagePaintWithResizeModeFit()
