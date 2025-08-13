@@ -62,5 +62,10 @@ namespace Microsoft.Maui.Handlers
 		{
 			handler.PlatformView.ResetIndicators();
 		}
+
+		internal static void MapIsEnabled(IIndicatorViewHandler handler, IIndicatorView indicator)
+		{
+			handler.PlatformView.UpdateIsEnabled();
+		}
 	}
 }

@@ -25,7 +25,10 @@ namespace Microsoft.Maui.Handlers
 			[nameof(IIndicatorView.IndicatorSize)] = MapIndicatorSize,
 			[nameof(IIndicatorView.IndicatorColor)] = MapIndicatorColor,
 			[nameof(IIndicatorView.SelectedIndicatorColor)] = MapSelectedIndicatorColor,
-			[nameof(IIndicatorView.IndicatorsShape)] = MapIndicatorShape
+			[nameof(IIndicatorView.IndicatorsShape)] = MapIndicatorShape,
+#if ANDROID
+			[nameof(IIndicatorView.IsEnabled)] = MapIsEnabled,
+#endif
 		};
 
 		public static CommandMapper<IIndicatorView, IIndicatorViewHandler> CommandMapper = new(ViewCommandMapper)

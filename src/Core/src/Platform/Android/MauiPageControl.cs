@@ -29,7 +29,7 @@ namespace Microsoft.Maui.Platform
 		public void SetIndicatorView(IIndicatorView? indicatorView)
 		{
 			_indicatorView = indicatorView;
-			if (indicatorView == null)
+			if (indicatorView is null)
 			{
 				RemoveViews(0);
 			}
@@ -56,7 +56,7 @@ namespace Microsoft.Maui.Platform
 			for (int i = 0; i < count; i++)
 			{
 				ImageView? view = GetChildAt(i) as ImageView;
-				if (view == null)
+				if (view is null)
 					continue;
 				var drawableToUse = index == i ? _currentPageShape : _pageShape;
 				if (drawableToUse != view.Drawable)
@@ -66,7 +66,7 @@ namespace Microsoft.Maui.Platform
 
 		public void UpdateIndicatorCount()
 		{
-			if (_indicatorView == null || Context == null || _isTemplateIndicator)
+			if (_indicatorView is null || Context is null || _isTemplateIndicator)
 				return;
 
 			var index = GetIndexFromPosition();
@@ -89,14 +89,7 @@ namespace Microsoft.Maui.Platform
 
 				imageView.SetImageDrawable(index == i ? _currentPageShape : _pageShape);
 
-				imageView.SetOnClickListener(new TEditClickListener(view =>
-				{
-					if (view?.Tag != null)
-					{
-						var position = (int)view.Tag;
-						_indicatorView.Position = position;
-					}
-				}));
+				SetClickListenerForIndicator(imageView);
 
 				AddView(imageView);
 			}
@@ -106,7 +99,7 @@ namespace Microsoft.Maui.Platform
 
 		void UpdateIndicatorTemplate(ILayout? layout)
 		{
-			if (layout == null || _indicatorView?.Handler?.MauiContext == null)
+			if (layout is null || _indicatorView?.Handler?.MauiContext is null)
 				return;
 
 			AView? handler = layout.ToPlatform(_indicatorView.Handler.MauiContext);
@@ -118,7 +111,7 @@ namespace Microsoft.Maui.Platform
 
 		void UpdateShapes()
 		{
-			if (_currentPageShape != null || _indicatorView == null)
+			if (_currentPageShape is not null || _indicatorView is null)
 				return;
 
 			var indicatorColor = _indicatorView.IndicatorColor;
@@ -139,7 +132,7 @@ namespace Microsoft.Maui.Platform
 
 		AShapeDrawable? GetShape(AColor color)
 		{
-			if (_indicatorView == null || Context == null)
+			if (_indicatorView is null || Context is null)
 				return null;
 
 			AShapeDrawable shape;
@@ -154,7 +147,7 @@ namespace Microsoft.Maui.Platform
 			shape.SetIntrinsicHeight((int)Context.ToPixels(indicatorSize));
 			shape.SetIntrinsicWidth((int)Context.ToPixels(indicatorSize));
 
-			if (shape.Paint != null)
+			if (shape.Paint is not null)
 #pragma warning disable CA1416 // https://github.com/xamarin/xamarin-android/issues/6962
 				shape.Paint.Color = color;
 #pragma warning restore CA1416
@@ -164,7 +157,7 @@ namespace Microsoft.Maui.Platform
 
 		int GetIndexFromPosition()
 		{
-			if (_indicatorView == null)
+			if (_indicatorView is null)
 				return 0;
 
 			var maxVisible = _indicatorView.GetMaximumVisible();
@@ -183,6 +176,46 @@ namespace Microsoft.Maui.Platform
 				var imageView = GetChildAt(ChildCount - 1);
 				imageView?.SetOnClickListener(null);
 				RemoveView(imageView);
+			}
+		}
+
+		internal void UpdateIsEnabled()
+		{
+			if (_indicatorView is null)
+			{
+				return;
+			}
+
+			for (int i = 0; i < ChildCount; i++)
+			{
+				var imageView = GetChildAt(i);
+				if (imageView is null)
+				{
+					continue;
+				}
+
+				SetClickListenerForIndicator(imageView);
+			}
+		}
+
+		void SetClickListenerForIndicator(AView imageView)
+		{
+			if (_indicatorView?.IsEnabled is true)
+			{
+				// Add click listener when enabled
+				imageView.SetOnClickListener(new TEditClickListener(view =>
+				{
+					if (view?.Tag is not null)
+					{
+						var clickPosition = (int)view.Tag;
+						_indicatorView.Position = clickPosition;
+					}
+				}));
+			}
+			else
+			{
+				// Remove click listener when disabled
+				imageView.SetOnClickListener(null);
 			}
 		}
 
