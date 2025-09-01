@@ -102,6 +102,7 @@ namespace Microsoft.Maui.Platform
 			}
 
 			RemoveViews(count);
+			UpdateIsEnabled();
 		}
 
 		void UpdateIndicatorTemplate(ILayout? layout)
@@ -183,6 +184,23 @@ namespace Microsoft.Maui.Platform
 				var imageView = GetChildAt(ChildCount - 1);
 				imageView?.SetOnClickListener(null);
 				RemoveView(imageView);
+			}
+		}
+
+		internal void UpdateIsEnabled()
+		{
+			if (_indicatorView is null)
+			{
+				return;
+			}
+
+			for (int i = 0; i < ChildCount; i++)
+			{
+				var imageView = GetChildAt(i) as ImageView;
+				if (imageView != null)
+				{
+					imageView.Enabled = _indicatorView.IsEnabled;
+				}
 			}
 		}
 
