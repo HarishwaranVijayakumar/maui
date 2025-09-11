@@ -27,6 +27,29 @@ namespace Microsoft.Maui.Platform
 			SetProgressViewOffset(true, ProgressViewStartOffset, ProgressViewEndOffset - Math.Abs(ProgressViewStartOffset));
 		}
 
+		public override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)
+		{
+			base.OnMeasure(widthMeasureSpec, heightMeasureSpec);
+
+			// Re-measure with screen height when unspecified height causes 0 size.
+			var heightMode = MeasureSpec.GetMode(heightMeasureSpec);
+			if (heightMode == MeasureSpecMode.Unspecified && MeasuredHeight == 0 && _contentView is not null)
+			{
+				var displayMetrics = Context?.Resources?.DisplayMetrics;
+				if (displayMetrics is not null)
+				{
+					// Re-measure child with screen height as an upper bound
+					var atMostHeight = MeasureSpec.MakeMeasureSpec(displayMetrics.HeightPixels, MeasureSpecMode.AtMost);
+					_contentView.Measure(widthMeasureSpec, atMostHeight);
+					var childHeight = _contentView.MeasuredHeight;
+					if (childHeight > 0 && (childHeight != MeasuredHeight))
+					{
+						SetMeasuredDimension(MeasuredWidth, childHeight);
+					}
+				}
+			}
+		}
+
 		public void UpdateContent(IView? content, IMauiContext? mauiContext)
 		{
 			_contentView?.RemoveFromParent();
