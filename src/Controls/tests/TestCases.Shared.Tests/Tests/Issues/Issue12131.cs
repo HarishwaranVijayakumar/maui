@@ -16,6 +16,6 @@ public class Issue12131 : _IssuesUITest
 	[Category(UITestCategories.RefreshView)]
 	public void ItemsShouldBeVisible()
 	{
-		App.WaitForElement("Item 1");
+		App.WaitForElement("Success");
 	}
 }

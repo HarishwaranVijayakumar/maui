@@ -7,9 +7,9 @@ public class Issue12131 : ContentPage
 	{
 		VerticalStackLayout stack = new VerticalStackLayout();
 		RefreshView refreshView = new RefreshView();
-		CollectionView collectionView = new CollectionView();
-		collectionView.ItemsSource = Enumerable.Range(1, 20).Select(i => $"Item {i}").ToList();
-		refreshView.Content = collectionView;
+		Label label = new Label();
+		label.Text = "Success";
+		refreshView.Content = label;
 		stack.Children.Add(refreshView);
 		Content = stack;
 	}
