@@ -16,10 +16,12 @@ namespace Microsoft.Maui.Platform
 {
 	public class MauiSwipeRefreshLayout : SwipeRefreshLayout
 	{
+		readonly Context _context;
 		AView? _contentView;
 
 		public MauiSwipeRefreshLayout(Context context) : base(context)
 		{
+			_context = context;
 			// This works around a bug in SwipeRefreshLayout
 			// https://github.com/dotnet/maui/pull/17647#discussion_r1433358418
 			// https://issuetracker.google.com/issues/110463864
@@ -27,27 +29,54 @@ namespace Microsoft.Maui.Platform
 			SetProgressViewOffset(true, ProgressViewStartOffset, ProgressViewEndOffset - Math.Abs(ProgressViewStartOffset));
 		}
 
+		public ICrossPlatformLayout? CrossPlatformLayout
+		{
+			get;
+			set;
+		}
+
 		public override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)
 		{
-			base.OnMeasure(widthMeasureSpec, heightMeasureSpec);
-
-			// Re-measure with screen height when unspecified height causes 0 size.
-			var heightMode = MeasureSpec.GetMode(heightMeasureSpec);
-			if (heightMode == MeasureSpecMode.Unspecified && MeasuredHeight == 0 && _contentView is not null)
+			if (CrossPlatformLayout is null)
 			{
-				var displayMetrics = Context?.Resources?.DisplayMetrics;
-				if (displayMetrics is not null)
-				{
-					// Re-measure child with screen height as an upper bound
-					var atMostHeight = MeasureSpec.MakeMeasureSpec(displayMetrics.HeightPixels, MeasureSpecMode.AtMost);
-					_contentView.Measure(widthMeasureSpec, atMostHeight);
-					var childHeight = _contentView.MeasuredHeight;
-					if (childHeight > 0 && (childHeight != MeasuredHeight))
-					{
-						SetMeasuredDimension(MeasuredWidth, childHeight);
-					}
-				}
+				base.OnMeasure(widthMeasureSpec, heightMeasureSpec);
+				return;
 			}
+
+			var deviceIndependentWidth = widthMeasureSpec.ToDouble(_context);
+			var deviceIndependentHeight = heightMeasureSpec.ToDouble(_context);
+
+			var widthMode = MeasureSpec.GetMode(widthMeasureSpec);
+			var heightMode = MeasureSpec.GetMode(heightMeasureSpec);
+
+			var measure = CrossPlatformLayout.CrossPlatformMeasure(deviceIndependentWidth, deviceIndependentHeight);
+
+			// If the measure spec was exact, we should return the explicit size value, even if the content
+			// measure came out to a different size
+			var width = widthMode == MeasureSpecMode.Exactly ? deviceIndependentWidth : measure.Width;
+			var height = heightMode == MeasureSpecMode.Exactly ? deviceIndependentHeight : measure.Height;
+
+			var platformWidth = _context.ToPixels(width);
+			var platformHeight = _context.ToPixels(height);
+
+			// Minimum values win over everything
+			platformWidth = Math.Max(MinimumWidth, platformWidth);
+			platformHeight = Math.Max(MinimumHeight, platformHeight);
+
+			SetMeasuredDimension((int)platformWidth, (int)platformHeight);
+		}
+
+		protected override void OnLayout(bool changed, int left, int top, int right, int bottom)
+		{
+			base.OnLayout(changed, left, top, right, bottom);
+
+			if (CrossPlatformLayout is null)
+			{
+				return;
+			}
+
+			var destination = _context.ToCrossPlatformRectInReferenceFrame(left, top, right, bottom);
+			CrossPlatformLayout.CrossPlatformArrange(destination);
 		}
 
 		public void UpdateContent(IView? content, IMauiContext? mauiContext)
