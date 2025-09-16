@@ -18,6 +18,7 @@ namespace Microsoft.Maui.Platform
 	{
 		readonly Context _context;
 		AView? _contentView;
+		WeakReference<ICrossPlatformLayout>? _crossPlatformLayoutWeakRef;
 
 		public MauiSwipeRefreshLayout(Context context) : base(context)
 		{
@@ -31,8 +32,8 @@ namespace Microsoft.Maui.Platform
 
 		public ICrossPlatformLayout? CrossPlatformLayout
 		{
-			get;
-			set;
+			get => _crossPlatformLayoutWeakRef is not null && _crossPlatformLayoutWeakRef?.TryGetTarget(out var target) is true ? target : null;
+			set => _crossPlatformLayoutWeakRef = value is not null ? new WeakReference<ICrossPlatformLayout>(value) : null;
 		}
 
 		public override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)

@@ -31,6 +31,7 @@ namespace Microsoft.Maui.Handlers
 			// If we're being disconnected from the xplat element, then we should no longer be managing its children
 			platformView.Refresh -= OnSwipeRefresh;
 			platformView.UpdateContent(null, null);
+			platformView.CrossPlatformLayout = null;
 			base.DisconnectHandler(platformView);
 		}
 
