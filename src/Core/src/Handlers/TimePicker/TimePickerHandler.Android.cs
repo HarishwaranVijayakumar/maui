@@ -131,6 +131,10 @@ namespace Microsoft.Maui.Handlers
 			if (VirtualView == null)
 				return;
 
+			// Check if dialog is already showing to avoid recreating unnecessarily
+			if (_dialog is not null && _dialog.IsShowing)
+				return;
+
 			var time = VirtualView.Time;
 			ShowPickerDialog(time.Hours, time.Minutes);
 		}
@@ -152,7 +156,7 @@ namespace Microsoft.Maui.Handlers
 		}
 
 		bool Use24HourView => VirtualView != null && (DateFormat.Is24HourFormat(PlatformView?.Context)
-			&& VirtualView.Format == "t" || VirtualView.Format == "HH:mm");
+		 && VirtualView.Format == "t" || VirtualView.Format == "HH:mm");
 
 		void OnMainDisplayInfoChanged(object? sender, DisplayInfoChangedEventArgs e)
 		{
