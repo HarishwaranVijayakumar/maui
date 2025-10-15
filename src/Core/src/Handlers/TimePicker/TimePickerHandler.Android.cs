@@ -152,7 +152,7 @@ namespace Microsoft.Maui.Handlers
 		}
 
 		bool Use24HourView => VirtualView != null && (DateFormat.Is24HourFormat(PlatformView?.Context)
-		 	&& VirtualView.Format == "t" || VirtualView.Format == "HH:mm");
+			&& VirtualView.Format == "t" || VirtualView.Format == "HH:mm");
 
 		void OnMainDisplayInfoChanged(object? sender, DisplayInfoChangedEventArgs e)
 		{
