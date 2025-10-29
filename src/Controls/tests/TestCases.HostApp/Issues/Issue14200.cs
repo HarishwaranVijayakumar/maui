@@ -19,6 +19,5 @@ public class Issue14200 : ContentPage
 				}
 			}
 		};
-		Content = verticalStack;
 	}
 }
