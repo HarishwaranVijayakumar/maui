@@ -1029,13 +1029,13 @@ namespace Microsoft.Maui.Controls
 		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='GoToAsync'][1]/Docs/*" />
 		public Task GoToAsync(ShellNavigationState state)
 		{
-			return _navigationManager.GoToAsync(state, null, false);
+			return Dispatcher.DispatchIfRequiredAsync(() => _navigationManager.GoToAsync(state, null, false));
 		}
 
 		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='GoToAsync'][2]/Docs/*" />
 		public Task GoToAsync(ShellNavigationState state, bool animate)
 		{
-			return _navigationManager.GoToAsync(state, animate, false);
+			return Dispatcher.DispatchIfRequiredAsync(() => _navigationManager.GoToAsync(state, animate, false));
 		}
 
 		/// <summary>Asynchronously navigates to the specified state with optional parameters.</summary>
@@ -1044,7 +1044,7 @@ namespace Microsoft.Maui.Controls
 		/// <returns>A task that represents the asynchronous navigation operation.</returns>
 		public Task GoToAsync(ShellNavigationState state, IDictionary<string, object> parameters)
 		{
-			return _navigationManager.GoToAsync(state, null, false, parameters: new ShellRouteParameters(parameters));
+			return Dispatcher.DispatchIfRequiredAsync(() => _navigationManager.GoToAsync(state, null, false, parameters: new ShellRouteParameters(parameters)));
 		}
 
 		/// <summary>Asynchronously navigates to the specified state with animation control and optional parameters.</summary>
@@ -1054,7 +1054,7 @@ namespace Microsoft.Maui.Controls
 		/// <returns>A task that represents the asynchronous navigation operation.</returns>
 		public Task GoToAsync(ShellNavigationState state, bool animate, IDictionary<string, object> parameters)
 		{
-			return _navigationManager.GoToAsync(state, animate, false, parameters: new ShellRouteParameters(parameters));
+			return Dispatcher.DispatchIfRequiredAsync(() => _navigationManager.GoToAsync(state, animate, false, parameters: new ShellRouteParameters(parameters)));
 		}
 
 		/// <summary>
@@ -1065,7 +1065,7 @@ namespace Microsoft.Maui.Controls
 		/// <returns></returns>
 		public Task GoToAsync(ShellNavigationState state, ShellNavigationQueryParameters shellNavigationQueryParameters)
 		{
-			return _navigationManager.GoToAsync(state, null, false, parameters: new ShellRouteParameters(shellNavigationQueryParameters));
+			return Dispatcher.DispatchIfRequiredAsync(() => _navigationManager.GoToAsync(state, null, false, parameters: new ShellRouteParameters(shellNavigationQueryParameters)));
 		}
 
 		/// <summary>
@@ -1077,7 +1077,7 @@ namespace Microsoft.Maui.Controls
 		/// <returns></returns>
 		public Task GoToAsync(ShellNavigationState state, bool animate, ShellNavigationQueryParameters shellNavigationQueryParameters)
 		{
-			return _navigationManager.GoToAsync(state, animate, false, parameters: new ShellRouteParameters(shellNavigationQueryParameters));
+			return Dispatcher.DispatchIfRequiredAsync(() => _navigationManager.GoToAsync(state, animate, false, parameters: new ShellRouteParameters(shellNavigationQueryParameters)));
 		}
 
 		/// <summary>
