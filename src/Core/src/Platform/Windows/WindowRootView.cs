@@ -226,16 +226,27 @@ namespace Microsoft.Maui.Platform
 
 			if (AppWindowId.HasValue)
 			{
-				var nonClientInputSrc =
-					InputNonClientPointerSource.GetForWindowId(AppWindowId.Value);
+				try
+				{
+					var nonClientInputSrc =
+						InputNonClientPointerSource.GetForWindowId(AppWindowId.Value);
 
-				if (rectArray.Count > 0)
-				{
-					nonClientInputSrc.SetRegionRects(NonClientRegionKind.Passthrough, [.. rectArray]);
+					if (rectArray.Count > 0)
+					{
+						nonClientInputSrc.SetRegionRects(NonClientRegionKind.Passthrough, [.. rectArray]);
+					}
+					else
+					{
+						nonClientInputSrc.ClearRegionRects(NonClientRegionKind.Passthrough);
+					}
 				}
-				else
+				catch (Exception)
 				{
-					nonClientInputSrc.ClearRegionRects(NonClientRegionKind.Passthrough);
+					// Fix for GitHub issue #32194: Modal navigation creates lingering LayoutUpdated handlers
+					// that persist after disposal. During app shutdown, these handlers call this method
+					// with a stale WindowId, causing InputNonClientPointerSource.GetForWindowId() to throw
+					// "Value does not fall within the expected range." Gracefully handle the invalid WindowId.
+					return;
 				}
 			}
 		}
