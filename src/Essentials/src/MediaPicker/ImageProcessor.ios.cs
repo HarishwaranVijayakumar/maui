@@ -20,25 +20,27 @@ internal static partial class ImageProcessor
 		}
 
 		using var image = UIImage.LoadFromData(data);
-		
+
 		if (image?.CGImage is null)
 		{
 			return inputStream;
 		}
 
-		// Check if rotation is needed based on image orientation
-		if (image.Orientation == UIImageOrientation.Up)
+		// Check if we need to apply orientation correction by examining the actual image dimensions
+		// Even if image.Orientation is Up, the pixels might still need rotation
+		var needsRotation = DoesImageNeedRotation(image, data);
+
+		if (!needsRotation)
 		{
 			return inputStream;
 		}
 
-		// Create a new image with corrected orientation metadata (no pixel manipulation)
-		// This preserves the original image data while fixing the display orientation
-		var correctedImage = UIImage.FromImage(image.CGImage, image.CurrentScale, UIImageOrientation.Up);
-		
+		// Create a properly oriented image by redrawing with orientation applied
+		var correctedImage = CreateProperlyOrientedImage(image);
+
 		// Write the corrected image back to a stream, preserving original quality
 		var outputStream = new MemoryStream();
-		
+
 		// Determine output format based on original file
 		NSData? imageData = null;
 		if (!string.IsNullOrEmpty(originalFileName))
@@ -60,7 +62,7 @@ internal static partial class ImageProcessor
 			// Default to JPEG with maximum quality (1.0)
 			imageData = correctedImage.AsJPEG(1f);
 		}
-		
+
 		if (imageData is not null)
 		{
 			await imageData.AsStream().CopyToAsync(outputStream);
@@ -69,6 +71,58 @@ internal static partial class ImageProcessor
 		}
 
 		return inputStream;
+	}
+
+	static bool DoesImageNeedRotation(UIImage image, NSData data)
+	{
+		try
+		{
+			// Check the original EXIF orientation from raw data
+			using var imageSource = CGImageSource.FromData(data);
+			if (imageSource is null)
+			{
+				return false;
+			}
+
+			var imageProperties = imageSource.CopyProperties((NSDictionary?)null, 0);
+			if (imageProperties is null)
+			{
+				return false;
+			}
+
+			// Get EXIF orientation value
+			if (imageProperties.TryGetValue(ImageIO.CGImageProperties.Orientation, out var orientationObj) &&
+			 orientationObj is NSNumber orientationNumber)
+			{
+				var exifOrientation = orientationNumber.Int32Value;
+				// EXIF orientation 1 = normal, anything else needs rotation
+				return exifOrientation != 1;
+			}
+
+			return false;
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
+	static UIImage CreateProperlyOrientedImage(UIImage originalImage)
+	{
+		// Get the image size accounting for orientation
+		var imageSize = originalImage.Size;
+
+		// Create a new context with the correct size
+		UIGraphics.BeginImageContextWithOptions(imageSize, false, originalImage.CurrentScale);
+
+		// Draw the image - this applies the orientation transformation to the pixels
+		originalImage.Draw(new CoreGraphics.CGRect(0, 0, imageSize.Width, imageSize.Height));
+
+		// Get the properly oriented image
+		var orientedImage = UIGraphics.GetImageFromCurrentImageContext();
+		UIGraphics.EndImageContext();
+
+		return orientedImage ?? originalImage;
 	}
 
 	public static partial Task<byte[]?> ExtractMetadataAsync(Stream inputStream, string? originalFileName)
