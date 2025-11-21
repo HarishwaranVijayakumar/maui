@@ -1,9 +1,10 @@
 #nullable enable
 using System;
-using System.Runtime.InteropServices;
-using CoreFoundation;
 using Foundation;
 using UIKit;
+#if MACCATALYST
+using PlatformIOKit = Microsoft.Maui.ApplicationModel.IOKit;
+#endif
 
 namespace Microsoft.Maui.Devices
 {
@@ -24,14 +25,26 @@ namespace Microsoft.Maui.Devices
 
 			if (keepScreenOn)
 			{
-				IOKit.PreventUserIdleDisplaySleep("KeepScreenOn", out keepScreenOnId);
+				if (!PlatformIOKit.PreventUserIdleDisplaySleep("KeepScreenOn", out keepScreenOnId))
+				{
+					keepScreenOnId = 0; // Reset on failure
+				}
 			}
 			else
 			{
-				if (IOKit.AllowUserIdleDisplaySleep(keepScreenOnId))
+				if (PlatformIOKit.AllowUserIdleDisplaySleep(keepScreenOnId))
 				{
 					keepScreenOnId = 0;
 				}
+			}
+		}
+
+		~DeviceDisplayImplementation()
+		{
+			if (keepScreenOnId != 0)
+			{
+				PlatformIOKit.AllowUserIdleDisplaySleep(keepScreenOnId);
+				keepScreenOnId = 0;
 			}
 		}
 #else
@@ -95,37 +108,4 @@ namespace Microsoft.Maui.Devices
 #pragma warning restore CA1422 // Validate platform compatibility
 #pragma warning restore CA1416
 	}
-
-#if MACCATALYST
-	internal static class IOKit
-	{
-		const string IOKitLibrary = "/System/Library/Frameworks/IOKit.framework/IOKit";
-		const uint kIOPMAssertionLevelOn = 255;
-		static readonly CFString kIOPMAssertionTypePreventUserIdleDisplaySleep = "PreventUserIdleDisplaySleep";
-
-		[DllImport(IOKitLibrary)]
-		static extern uint IOPMAssertionCreateWithName(IntPtr type, uint level, IntPtr name, out uint id);
-
-		[DllImport(IOKitLibrary)]
-		static extern uint IOPMAssertionRelease(uint id);
-
-		internal static bool PreventUserIdleDisplaySleep(CFString name, out uint id)
-		{
-			var result = IOPMAssertionCreateWithName(
-				kIOPMAssertionTypePreventUserIdleDisplaySleep.Handle,
-				kIOPMAssertionLevelOn,
-				name.Handle,
-				out var newId);
-
-			id = result == 0 ? newId : 0;
-			return result == 0;
-		}
-
-		internal static bool AllowUserIdleDisplaySleep(uint id)
-		{
-			var result = IOPMAssertionRelease(id);
-			return result == 0;
-		}
-	}
-#endif
 }
