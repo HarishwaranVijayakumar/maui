@@ -25,6 +25,7 @@ namespace Microsoft.Maui.Devices
 
 			if (keepScreenOn)
 			{
+				// Create an IOKit assertion to prevent the display from sleeping
 				if (!PlatformIOKit.PreventUserIdleDisplaySleep("KeepScreenOn", out keepScreenOnId))
 				{
 					keepScreenOnId = 0; // Reset on failure
@@ -32,6 +33,7 @@ namespace Microsoft.Maui.Devices
 			}
 			else
 			{
+				// Release the IOKit assertion to allow the display to sleep
 				if (PlatformIOKit.AllowUserIdleDisplaySleep(keepScreenOnId))
 				{
 					keepScreenOnId = 0;
@@ -39,10 +41,15 @@ namespace Microsoft.Maui.Devices
 			}
 		}
 
+		/// <summary>
+		/// Finalizer to ensures IOKit assertion is released when object is disposed
+		/// </summary>
 		~DeviceDisplayImplementation()
 		{
+			// Check if there's an active IOKit assertion that needs to be released
 			if (keepScreenOnId != 0)
 			{
+				// Release the IOKit assertion to allow the display to sleep
 				PlatformIOKit.AllowUserIdleDisplaySleep(keepScreenOnId);
 				keepScreenOnId = 0;
 			}
