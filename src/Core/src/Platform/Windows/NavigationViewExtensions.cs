@@ -21,8 +21,19 @@ namespace Microsoft.Maui.Platform
 			// AFAICT you can't modify properties set by ThemeResource at runtime so we have to just update this value directly
 			if (paint != null)
 				navigationView.TopNavArea?.UpdateBackground(paint, null);
-			else if (Application.Current.Resources.TryGetValue("NavigationViewTopPaneBackground", out object value) && value is WBrush brush)
-				navigationView.TopNavArea?.UpdateBackground(null, brush);
+			else if (Application.Current.Resources.TryGetValue("NavigationViewTopPaneBackground", out object value))
+			{
+				WBrush? themeBrush = null;
+				if (value is WBrush brush)
+				{
+					themeBrush = brush;
+				}
+				else if (value is global::Windows.UI.Color uiColor)
+				{
+					themeBrush = new WSolidColorBrush(uiColor);
+				}
+				navigationView.TopNavArea?.UpdateBackground(null, themeBrush);
+			}
 		}
 
 		public static void UpdateTopNavigationViewItemTextColor(this MauiNavigationView navigationView, Paint? paint)
