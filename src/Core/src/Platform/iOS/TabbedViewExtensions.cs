@@ -53,7 +53,7 @@ namespace Microsoft.Maui.Platform
 			}
 			else
 			{
-				_tabBarAppearance.ConfigureWithDefaultBackground();
+				_tabBarAppearance.BackgroundColor = UIColor.Clear;
 			}
 
 			// Set BarTextColor
