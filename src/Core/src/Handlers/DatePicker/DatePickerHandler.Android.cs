@@ -16,13 +16,6 @@ namespace Microsoft.Maui.Handlers
 		{
 			var mauiDatePicker = new MauiDatePicker(Context);
 
-			var date = VirtualView?.Date;
-
-			if (date != null)
-			{
-				_dialog = CreateDatePickerDialog(date.Value.Year, date.Value.Month - 1, date.Value.Day);
-			}
-
 			return mauiDatePicker;
 		}
 
@@ -82,6 +75,15 @@ namespace Microsoft.Maui.Handlers
 					VirtualView.Date = e.Date;
 				}
 			}, year, month, day);
+
+			// Apply MinimumDate/MaximumDate constraints when creating the dialog.
+			// This ensures the constraints are always current, since Android's DatePickerDialog
+			// caches these values and updating them after creation can be unreliable.
+			if (VirtualView is not null)
+			{
+				PlatformView?.UpdateMinimumDate(VirtualView, dialog);
+				PlatformView?.UpdateMaximumDate(VirtualView, dialog);
+			}
 
 			dialog.DismissEvent += OnDialogDismiss;
 
@@ -163,31 +165,28 @@ namespace Microsoft.Maui.Handlers
 
 		void ShowPickerDialog(DateTime? date)
 		{
+			if (_dialog is not null)
+			{
+				return;
+			}
+
 			var year = date?.Year ?? DateTime.Today.Year;
 			var month = (date?.Month ?? DateTime.Today.Month) - 1;
 			var day = date?.Day ?? DateTime.Today.Day;
 
-			if (_dialog is null)
-			{
-				_dialog = CreateDatePickerDialog(year, month, day);
-			}
-			else
-			{
-				EventHandler? setDateLater = null;
-				setDateLater = (sender, e) => { _dialog!.UpdateDate(year, month, day); _dialog.ShowEvent -= setDateLater; };
-				_dialog.ShowEvent += setDateLater;
-				_dialog.DismissEvent += OnDialogDismiss;
-			}
-
+			// Create a new dialog each time to ensure MinimumDate/MaximumDate are always current. 
+			// This follows the same approach as TimePicker. Android's DatePickerDialog caches min/max dates internally, making it unreliable to update them after the dialog is created.
+			_dialog = CreateDatePickerDialog(year, month, day);
 			_dialog.Show();
 		}
 
 		void HidePickerDialog()
 		{
-			if (_dialog != null)
+			if (_dialog is not null)
 			{
 				_dialog.DismissEvent -= OnDialogDismiss;
 				_dialog.Hide();
+				_dialog = null;
 			}
 
 			VirtualView.IsOpen = false;
