@@ -55,12 +55,7 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void DisconnectHandler(MauiDatePicker platformView)
 		{
-			if (_dialog != null)
-			{
-				_dialog.DismissEvent -= OnDialogDismiss;
-				_dialog.Dismiss();
-				_dialog = null;
-			}
+			ResetDialog();
 
 			platformView.ViewAttachedToWindow -= OnViewAttachedToWindow;
 			platformView.ViewDetachedFromWindow -= OnViewDetachedFromWindow;
