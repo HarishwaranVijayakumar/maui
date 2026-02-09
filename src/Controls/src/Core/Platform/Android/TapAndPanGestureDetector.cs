@@ -40,16 +40,25 @@ namespace Microsoft.Maui.Controls.Platform
 
 		public override bool OnTouchEvent(MotionEvent ev)
 		{
-			if (base.OnTouchEvent(ev))
-				return true;
+			if (ev is null)
+			{
+				return false;
+			}
 
-			if (_pointerGestureHandler != null && ev?.Action is
-				MotionEventActions.Up or MotionEventActions.Down or MotionEventActions.Cancel)
+			// Forward pointer events before base handling, because base.OnTouchEvent may consume
+			// Move events when PanGestureRecognizer is active, preventing PointerMoved/PointerExited
+			if (_pointerGestureHandler != null && ev.Action is
+				MotionEventActions.Up or MotionEventActions.Down or MotionEventActions.Cancel or MotionEventActions.Move)
 			{
 				_pointerGestureHandler.OnTouch(ev);
 			}
 
-			if (_listener != null && ev?.Action == MotionEventActions.Up)
+			if (base.OnTouchEvent(ev))
+			{
+				return true;
+			}
+
+			if (_listener != null && ev.Action == MotionEventActions.Up)
 				_listener.EndScrolling();
 
 			return false;

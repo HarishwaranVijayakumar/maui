@@ -11,6 +11,8 @@ namespace Microsoft.Maui.Controls.Platform
 	{
 		// Tracks the last button pressed so we can use it for subsequent Move/Up/Cancel
 		ButtonsMask? _activeButton;
+		// Tracks whether pointer has exited the view bounds during a touch sequence
+		bool _hasExited;
 
 		internal PointerGestureHandler(Func<View> getView, Func<AView> getControl)
 		{
@@ -81,40 +83,76 @@ namespace Microsoft.Maui.Controls.Platform
 						case MotionEventActions.Down:
 							// Primary button goes through Down/Up
 							_activeButton = current;
+							_hasExited = false;
 							effectiveButton = current;
 							if (!CheckButtonMask(pgr, effectiveButton))
 								continue;
 							pgr.SendPointerPressed(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
 							break;
 						case MotionEventActions.Move:
+							if (_hasExited)
+							{
+								continue;
+							}
+
 							// Keep reporting the button that initiated the press if one is active
 							effectiveButton = _activeButton ?? current;
 							if (!CheckButtonMask(pgr, effectiveButton))
 								continue;
-							pgr.SendPointerMoved(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
+
+							// Check if touch is still within view bounds (matches iOS behavior)
+							if (!IsWithinViewBounds(control, e))
+							{
+								// Touch moved outside bounds - send PointerExited and stop events
+								pgr.SendPointerExited(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
+								_hasExited = true;
+							}
+							else
+							{
+								// Normal move within bounds
+								pgr.SendPointerMoved(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
+							}
 							break;
 						case MotionEventActions.Up:
 							// ACTION_UP does not carry ActionButton. Use the active one if available.
 							effectiveButton = _activeButton ?? current;
 							if (!CheckButtonMask(pgr, effectiveButton))
 								continue;
-							pgr.SendPointerReleased(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
+							if (!_hasExited)
+							{
+								pgr.SendPointerReleased(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
+							}
 							// Clear active button after release
 							_activeButton = null;
+							_hasExited = false;
 							break;
 						case MotionEventActions.Cancel:
 							// Treat cancel similar to release for active button, then exit
 							effectiveButton = _activeButton ?? current;
 							if (!CheckButtonMask(pgr, effectiveButton))
 								continue;
-							pgr.SendPointerExited(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
+							if (!_hasExited)
+							{
+								pgr.SendPointerExited(view, (relativeTo) => e.CalculatePosition(GetView(), relativeTo), platformPointerArgs, effectiveButton);
+							}
 							_activeButton = null;
+							_hasExited = false;
 							break;
 					}
 				}
 			}
 
 			return false;
+		}
+
+		bool IsWithinViewBounds(AView control, MotionEvent e)
+		{
+			// Get the touch coordinates relative to the view
+			float x = e.GetX();
+			float y = e.GetY();
+
+			// Check if the point is within the view's bounds (exclusive upper bound)
+			return x >= 0 && x < control.Width && y >= 0 && y < control.Height;
 		}
 
 		ButtonsMask GetPressedButton(MotionEvent motionEvent)
