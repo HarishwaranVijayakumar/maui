@@ -47,7 +47,7 @@ namespace Microsoft.Maui.Controls.Platform
 
 			// Forward pointer events before base handling, because base.OnTouchEvent may consume
 			// Move events when PanGestureRecognizer is active, preventing PointerMoved/PointerExited
-			if (_pointerGestureHandler != null && ev.Action is
+			if (_pointerGestureHandler is not null && ev.Action is
 				MotionEventActions.Up or MotionEventActions.Down or MotionEventActions.Cancel or MotionEventActions.Move)
 			{
 				_pointerGestureHandler.OnTouch(ev);
@@ -58,7 +58,7 @@ namespace Microsoft.Maui.Controls.Platform
 				return true;
 			}
 
-			if (_listener != null && ev.Action == MotionEventActions.Up)
+			if (_listener is not null && ev.Action == MotionEventActions.Up)
 				_listener.EndScrolling();
 
 			return false;
