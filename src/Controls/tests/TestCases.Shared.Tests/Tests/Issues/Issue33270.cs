@@ -1,3 +1,4 @@
+#if TEST_FAILS_ON_WINDOWS // DragCoordinates doesn't move the pointer off the view on Windows, so PointerExited event is not fired
 using NUnit.Framework;
 using UITest.Appium;
 using UITest.Core;
@@ -23,3 +24,4 @@ public class Issue33270 : _IssuesUITest
 		Assert.That(App.WaitForElement("PointerExitedLabel").GetText(), Is.EqualTo("PointerExited: Success"));
 	}
 }
+#endif
