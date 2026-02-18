@@ -267,6 +267,67 @@ function Get-AutoDetectedTestFilter {
 }
 
 # ============================================================
+# Snapshot diff capture helpers
+# ============================================================
+
+# Known test project bin directories where snapshots-diff may appear
+function Get-SnapshotsDiffSearchPaths {
+    $testProjectDirs = @(
+        "src/Controls/tests/TestCases.Android.Tests",
+        "src/Controls/tests/TestCases.iOS.Tests",
+        "src/Controls/tests/TestCases.Mac.Tests",
+        "src/Controls/tests/TestCases.WinUI.Tests"
+    )
+    $searchPaths = @()
+    foreach ($dir in $testProjectDirs) {
+        $fullDir = Join-Path $RepoRoot $dir
+        if (Test-Path $fullDir) {
+            $searchPaths += $fullDir
+        }
+    }
+    return $searchPaths
+}
+
+function Clear-SnapshotsDiff {
+    $searchPaths = Get-SnapshotsDiffSearchPaths
+    foreach ($searchPath in $searchPaths) {
+        $diffDirs = Get-ChildItem -Path $searchPath -Directory -Recurse -Filter "snapshots-diff" -ErrorAction SilentlyContinue
+        foreach ($diffDir in $diffDirs) {
+            Remove-Item -Path $diffDir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "   🧹 Cleared stale snapshots-diff: $($diffDir.FullName)" -ForegroundColor Gray
+        }
+    }
+}
+
+function Copy-SnapshotsDiff {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationDir
+    )
+    $copiedFiles = @()
+    $searchPaths = Get-SnapshotsDiffSearchPaths
+    foreach ($searchPath in $searchPaths) {
+        $diffDirs = Get-ChildItem -Path $searchPath -Directory -Recurse -Filter "snapshots-diff" -ErrorAction SilentlyContinue
+        foreach ($diffDir in $diffDirs) {
+            $files = Get-ChildItem -Path $diffDir.FullName -File -Recurse -ErrorAction SilentlyContinue
+            if ($files.Count -gt 0) {
+                New-Item -ItemType Directory -Force -Path $DestinationDir | Out-Null
+                foreach ($file in $files) {
+                    $relativePath = $file.FullName.Substring($diffDir.FullName.Length + 1)
+                    $destFile = Join-Path $DestinationDir $relativePath
+                    $destFileDir = Split-Path $destFile -Parent
+                    New-Item -ItemType Directory -Force -Path $destFileDir -ErrorAction SilentlyContinue | Out-Null
+                    Copy-Item -Path $file.FullName -Destination $destFile -Force
+                    $copiedFiles += $relativePath
+                }
+                Write-Host "   📸 Captured $($files.Count) screenshot artifact(s) from: $($diffDir.FullName)" -ForegroundColor Cyan
+            }
+        }
+    }
+    return $copiedFiles
+}
+
+# ============================================================
 # Parse test results from log file
 # ============================================================
 function Get-TestResultFromLog {
@@ -430,9 +491,16 @@ if ($DetectedFixFiles.Count -eq 0) {
     Write-Host "🧪 Running tests (expecting them to FAIL)..." -ForegroundColor Cyan
     Write-Host ""
 
+    # Clear stale snapshots-diff before test run
+    Clear-SnapshotsDiff
+
     # Use shared BuildAndRunHostApp.ps1 infrastructure with -Rebuild to ensure clean builds
     $buildScript = Join-Path $RepoRoot ".github/scripts/BuildAndRunHostApp.ps1"
     & $buildScript -Platform $Platform -TestFilter $TestFilter -Rebuild 2>&1 | Tee-Object -FilePath $TestLog
+
+    # Capture screenshot artifacts from failed tests
+    $snapshotsDir = Join-Path $OutputPath "snapshots"
+    $capturedSnapshots = Copy-SnapshotsDiff -DestinationDir $snapshotsDir
 
     # Parse test results using shared function
     $testOutputLog = Join-Path $RepoRoot "CustomAgentLogsTmp/UITests/test-output.log"
@@ -466,6 +534,13 @@ if ($DetectedFixFiles.Count -eq 0) {
         Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Green
         Write-Host ""
         Write-Host "Failed tests: $($testResult.FailCount)" -ForegroundColor Yellow
+        if ($capturedSnapshots -and $capturedSnapshots.Count -gt 0) {
+            Write-Host ""
+            Write-Host "📸 Captured $($capturedSnapshots.Count) screenshot artifact(s) in: $snapshotsDir" -ForegroundColor Cyan
+            foreach ($snap in $capturedSnapshots) {
+                Write-Host "   - $snap" -ForegroundColor White
+            }
+        }
         Update-VerificationLabels -ReproductionConfirmed $true
         exit 0
     } else {
@@ -556,7 +631,9 @@ function Write-MarkdownReport {
         [bool]$FailedWithoutFix,
         [bool]$PassedWithFix,
         [hashtable]$WithoutFixResult,
-        [hashtable]$WithFixResult
+        [hashtable]$WithFixResult,
+        [string[]]$SnapshotsWithoutFix = @(),
+        [string[]]$SnapshotsWithFix = @()
     )
     
     $reportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -689,6 +766,44 @@ $(Get-Content $WithFixLog -Raw)
 - Test output without fix: ``$WithoutFixLog``
 - Test output with fix: ``$WithFixLog``
 - UI test logs: ``CustomAgentLogsTmp/UITests/``
+
+$(if ($SnapshotsWithoutFix -and $SnapshotsWithoutFix.Count -gt 0) {
+@"
+
+#### 📸 Screenshot Artifacts (Without Fix)
+
+These screenshots were captured when tests ran **without the fix** applied.
+They show the visual state of the bug that the tests detected.
+
+**Location:** ``$($OutputPath)/snapshots-without-fix/``
+
+| File | Description |
+|------|-------------|
+$(($SnapshotsWithoutFix | ForEach-Object {
+    $desc = if ($_ -match "-diff\.png$") { "Visual diff (highlights differences)" } else { "Actual screenshot (bug state)" }
+    "| ``$_`` | $desc |"
+}) -join "`n")
+
+"@
+})$(if ($SnapshotsWithFix -and $SnapshotsWithFix.Count -gt 0) {
+@"
+
+#### 📸 Screenshot Artifacts (With Fix)
+
+These screenshots were captured when tests ran **with the fix** applied.
+If present, this may indicate the fix didn't fully resolve the visual regression.
+
+**Location:** ``$($OutputPath)/snapshots-with-fix/``
+
+| File | Description |
+|------|-------------|
+$(($SnapshotsWithFix | ForEach-Object {
+    $desc = if ($_ -match "-diff\.png$") { "Visual diff (highlights differences)" } else { "Actual screenshot" }
+    "| ``$_`` | $desc |"
+}) -join "`n")
+
+"@
+})
 "@
 
     $markdown | Set-Content -Path $MarkdownReport -Encoding UTF8
@@ -802,9 +917,16 @@ Write-Log "=========================================="
 Write-Log "STEP 2: Running tests WITHOUT fix (should FAIL)"
 Write-Log "=========================================="
 
+# Clear stale snapshots-diff before test run
+Clear-SnapshotsDiff
+
 # Use shared BuildAndRunHostApp.ps1 infrastructure with -Rebuild to ensure clean builds
 $buildScript = Join-Path $RepoRoot ".github/scripts/BuildAndRunHostApp.ps1"
 & $buildScript -Platform $Platform -TestFilter $TestFilter -Rebuild 2>&1 | Tee-Object -FilePath $WithoutFixLog
+
+# Capture screenshot artifacts from the "without fix" run
+$snapshotsWithoutFixDir = Join-Path $OutputPath "snapshots-without-fix"
+$capturedWithoutFix = Copy-SnapshotsDiff -DestinationDir $snapshotsWithoutFixDir
 
 $withoutFixResult = Get-TestResultFromLog -LogFile (Join-Path $RepoRoot "CustomAgentLogsTmp/UITests/test-output.log")
 
@@ -832,7 +954,14 @@ Write-Log "=========================================="
 Write-Log "STEP 4: Running tests WITH fix (should PASS)"
 Write-Log "=========================================="
 
+# Clear snapshots-diff before the "with fix" run
+Clear-SnapshotsDiff
+
 & $buildScript -Platform $Platform -TestFilter $TestFilter -Rebuild 2>&1 | Tee-Object -FilePath $WithFixLog
+
+# Capture screenshot artifacts from the "with fix" run (should be empty if tests pass)
+$snapshotsWithFixDir = Join-Path $OutputPath "snapshots-with-fix"
+$capturedWithFix = Copy-SnapshotsDiff -DestinationDir $snapshotsWithFixDir
 
 $withFixResult = Get-TestResultFromLog -LogFile (Join-Path $RepoRoot "CustomAgentLogsTmp/UITests/test-output.log")
 
@@ -873,7 +1002,9 @@ Write-MarkdownReport `
     -FailedWithoutFix $failedWithoutFix `
     -PassedWithFix $passedWithFix `
     -WithoutFixResult $withoutFixResult `
-    -WithFixResult $withFixResult
+    -WithFixResult $withFixResult `
+    -SnapshotsWithoutFix $capturedWithoutFix `
+    -SnapshotsWithFix $capturedWithFix
 
 if ($verificationPassed) {
     Write-Host ""
@@ -884,6 +1015,14 @@ if ($verificationPassed) {
     Write-Host "║  - FAIL without fix (as expected)                         ║" -ForegroundColor Green
     Write-Host "║  - PASS with fix (as expected)                            ║" -ForegroundColor Green
     Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    if ($capturedWithoutFix -and $capturedWithoutFix.Count -gt 0) {
+        Write-Host ""
+        Write-Host "📸 Screenshot artifacts captured (without fix - showing the bug):" -ForegroundColor Cyan
+        Write-Host "   Location: $snapshotsWithoutFixDir" -ForegroundColor White
+        foreach ($snap in $capturedWithoutFix) {
+            Write-Host "   - $snap" -ForegroundColor White
+        }
+    }
     Update-VerificationLabels -ReproductionConfirmed $true
     exit 0
 } else {

@@ -123,6 +123,17 @@ The skill generates output files under `CustomAgentLogsTmp/PRState/<PRNumber>/ve
 | `verification-log.txt` | Text log of the verification process |
 | `test-without-fix.log` | Full test output from run without fix |
 | `test-with-fix.log` | Full test output from run with fix |
+| `snapshots-without-fix/` | Screenshot artifacts from tests run WITHOUT fix (showing the bug) |
+| `snapshots-with-fix/` | Screenshot artifacts from tests run WITH fix (should be empty if fix works) |
+
+**Screenshot Artifacts:**
+
+When tests use `VerifyScreenshot()`, the script automatically captures the actual screenshots and visual diff images generated on test failure. These are saved to `snapshots-without-fix/` and `snapshots-with-fix/` directories respectively.
+
+- `<TestName>.png` — The actual screenshot captured during the test (shows the bug state)
+- `<TestName>-diff.png` — Visual diff highlighting what changed vs. the baseline
+
+This provides visual evidence of bug reproduction that PR authors can reference.
 
 **Plus UI test logs in** `CustomAgentLogsTmp/UITests/`:
 - `android-device.log` or `ios-device.log` - Device logs
@@ -140,7 +151,12 @@ CustomAgentLogsTmp/
             ├── verification-report.md  # Full detailed report
             ├── verification-log.txt
             ├── test-without-fix.log
-            └── test-with-fix.log
+            ├── test-with-fix.log
+            ├── snapshots-without-fix/  # Screenshots showing the bug
+            │   └── ios/
+            │       ├── Issue27847.png
+            │       └── Issue27847-diff.png
+            └── snapshots-with-fix/     # Should be empty if fix works
 ```
 
 **PR Number Detection:**
