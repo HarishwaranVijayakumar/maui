@@ -22,6 +22,11 @@ namespace Microsoft.Maui.Handlers
 					MauiContext!,
 					uIMenuBuilder);
 
+			if (!VirtualView.IsEnabled)
+			{
+				menu.UpdateMenuElementAttributes(false);
+			}
+
 			return menu;
 		}
 

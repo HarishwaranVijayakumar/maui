@@ -31,6 +31,14 @@ namespace Microsoft.Maui.Platform
 
 			if (uiMenuElement is UICommand command)
 				command.Attributes = isEnabled.ToUIMenuElementAttributes();
+
+			if (uiMenuElement is UIMenu menu)
+			{
+				foreach (var child in menu.Children)
+				{
+					child.UpdateMenuElementAttributes(isEnabled);
+				}
+			}
 		}
 
 		internal static UIMenuElementAttributes ToUIMenuElementAttributes(this bool isEnabled)

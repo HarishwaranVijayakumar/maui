@@ -14,13 +14,20 @@ namespace Microsoft.Maui.Handlers
 				uIMenuBuilder = builder;
 			}
 
-			return
+			var menu =
 				VirtualView
 					.ToPlatformMenu(
 						VirtualView.Text,
 						null,
 						MauiContext!,
 						uIMenuBuilder);
+
+			if (!VirtualView.IsEnabled)
+			{
+				menu.UpdateMenuElementAttributes(false);
+			}
+
+			return menu;
 		}
 
 		public static void MapIsEnabled(IMenuBarItemHandler handler, IMenuBarItem view)
