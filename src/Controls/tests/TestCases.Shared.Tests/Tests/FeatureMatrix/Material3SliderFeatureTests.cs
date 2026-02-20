@@ -466,6 +466,23 @@ public class Material3SliderFeatureTests : _GalleryUITest
 
 	// --- Minimum/Maximum + FlowDirection ---
 
+#if TEST_FAILS_ON_ANDROID // Resetting ThumbImageSource to null does not restore the default thumb on Material3 Slider
+	[Test]
+	[Category(UITestCategories.Material3)]
+	public void Material3Slider_SetThumbImageSourceAndReset_VerifyVisualState()
+	{
+		App.WaitForElement("Options");
+		App.Tap("Options");
+		App.WaitForElement("ThumbImageSourceButton");
+		App.Tap("ThumbImageSourceButton");
+		App.Tap("ThumbImageResetButton");
+		App.WaitForElement("Apply");
+		App.Tap("Apply");
+		App.WaitForElementTillPageNavigationSettled("SliderControl");
+		VerifyScreenshot(tolerance: 0.5, retryTimeout: TimeSpan.FromSeconds(2));
+	}
+#endif
+
 #if TEST_FAILS_ON_ANDROID // Setting Minimum=10 with default Maximum=1 causes IllegalStateException in Material3 Slider (valueFrom must be < valueTo)
 	[Test]
 	[Category(UITestCategories.Material3)]
