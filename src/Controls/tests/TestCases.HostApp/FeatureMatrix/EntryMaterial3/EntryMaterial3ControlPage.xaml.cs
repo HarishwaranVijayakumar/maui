@@ -5,7 +5,7 @@ namespace Maui.Controls.Sample;
 
 public class EntryMaterial3ControlPage : NavigationPage
 {
-	private EntryViewModel _viewModel;
+	EntryViewModel _viewModel;
 
 	public EntryMaterial3ControlPage()
 	{
@@ -16,7 +16,7 @@ public class EntryMaterial3ControlPage : NavigationPage
 
 public partial class EntryMaterial3ControlMainPage : ContentPage
 {
-	private EntryViewModel _viewModel;
+	EntryViewModel _viewModel;
 
 	public EntryMaterial3ControlMainPage(EntryViewModel viewModel)
 	{
@@ -26,7 +26,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 		EntryControl.PropertyChanged += UpdateEntryControl;
 	}
 
-	private async void NavigateToOptionsPage_Clicked(object sender, EventArgs e)
+	async void NavigateToOptionsPage_Clicked(object sender, EventArgs e)
 	{
 		BindingContext = _viewModel = new EntryViewModel();
 		_viewModel.Text = "Test Entry";
@@ -36,7 +36,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 		await Navigation.PushAsync(new EntryOptionsPage(_viewModel));
 	}
 
-	private void CursorPositionButton_Clicked(object sender, EventArgs e)
+	void CursorPositionButton_Clicked(object sender, EventArgs e)
 	{
 		if (int.TryParse(CursorPositionEntry.Text, out int cursorPosition))
 		{
@@ -44,7 +44,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 		}
 	}
 
-	private void SelectionLength_Clicked(object sender, EventArgs e)
+	void SelectionLength_Clicked(object sender, EventArgs e)
 	{
 		if (int.TryParse(SelectionLengthEntry.Text, out int selectionLength))
 		{
@@ -52,7 +52,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 		}
 	}
 
-	private void OnUpdateCursorAndSelectionClicked(object sender, EventArgs e)
+	void OnUpdateCursorAndSelectionClicked(object sender, EventArgs e)
 	{
 		if (int.TryParse(CursorPositionEntry.Text, out int cursorPosition))
 		{
@@ -83,7 +83,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 			SelectionLengthEntry.Text = EntryControl.SelectionLength.ToString();
 	}
 
-	private void EntryControl_TextChanged(object sender, TextChangedEventArgs e)
+	void EntryControl_TextChanged(object sender, TextChangedEventArgs e)
 	{
 		string eventInfo = $"TextChanged: Old='{e.OldTextValue}', New='{e.NewTextValue}'";
 
@@ -93,7 +93,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 		}
 	}
 
-	private void EntryControl_Completed(object sender, EventArgs e)
+	void EntryControl_Completed(object sender, EventArgs e)
 	{
 		string eventInfo = $"Completed: Event Triggered";
 
@@ -103,7 +103,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 		}
 	}
 
-	private void EntryControl_Focused(object sender, FocusEventArgs e)
+	void EntryControl_Focused(object sender, FocusEventArgs e)
 	{
 		string eventInfo = $"Focused: Event Triggered";
 
@@ -113,7 +113,7 @@ public partial class EntryMaterial3ControlMainPage : ContentPage
 		}
 	}
 
-	private void EntryControl_Unfocused(object sender, FocusEventArgs e)
+	void EntryControl_Unfocused(object sender, FocusEventArgs e)
 	{
 		string eventInfo = $"Unfocused: Event Triggered";
 
