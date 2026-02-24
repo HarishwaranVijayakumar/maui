@@ -49,6 +49,7 @@ namespace Maui.Controls.Sample
 			// Elements
 			new GalleryPageFactory(() => new ActivityIndicatorCoreGalleryPage(), "ActivityIndicator Gallery"),
 			new GalleryPageFactory(() => new BorderControlPage(), "Border Feature Matrix"),
+			new GalleryPageFactory(() => new DefaultThemePage(), "App Theme"),
 			new GalleryPageFactory(() => new BoxViewCoreGalleryPage(), "Box Gallery"),
 			new GalleryPageFactory(() => new ButtonControlPage(), "Button Feature Matrix"),
 			new GalleryPageFactory(() => new ButtonCoreGalleryPage(), "Button Gallery"),
@@ -59,6 +60,7 @@ namespace Maui.Controls.Sample
 			new GalleryPageFactory(() => new DatePickerCoreGalleryPage(), "Date Picker Gallery"),
 			new GalleryPageFactory(() => new EditorCoreGalleryPage(), "Editor Gallery"),
 			new GalleryPageFactory(() => new EntryCoreGalleryPage(), "Entry Gallery"),
+			new GalleryPageFactory(() => new FlexLayoutControlPage(), "FlexLayout Feature Matrix"),
 			new GalleryPageFactory(() => new FrameCoreGalleryPage(), "Frame Gallery"),
 			new GalleryPageFactory(() => new ImageButtonCoreGalleryPage(), "Image Button Gallery"),
 			new GalleryPageFactory(() => new ImageCoreGalleryPage(), "Image Gallery"),
@@ -115,7 +117,8 @@ namespace Maui.Controls.Sample
 			new GalleryPageFactory(() => new TwoPaneViewControlPage(), "TwoPaneView Feature Matrix"),
 			new GalleryPageFactory(() => new TitleBarControlPage(), "TitleBar Feature Matrix"),
 			new GalleryPageFactory(() => new IndicatorViewControlPage(), "IndicatorView Feature Matrix"),
-			new GalleryPageFactory(() => new LayoutControlPage(), "ScrollView With LayoutOptions Feature Matrix"),
+			new GalleryPageFactory(() => new GridControlPage(), "Grid Feature Matrix"),
+			new GalleryPageFactory(() => new LayoutFeaturePage(), "ScrollView With LayoutOptions Feature Matrix"),
 		};
 
 
@@ -188,6 +191,25 @@ namespace Maui.Controls.Sample
 			}
 
 			return Task.FromResult(false);
+		}
+
+		/// <summary>
+		/// Attempts to retrieve a gallery page by title.
+		/// </summary>
+		/// <param name="pageTitle">The title of the gallery page to find.</param>
+		/// <returns>The Page instance if found; otherwise, null.</returns>
+		/// <remarks>
+		/// This method searches for a matching gallery page by title (case-insensitive).
+		/// If a match is found, it invokes the associated Realize factory to create the page.
+		/// </remarks>
+		public Page TryToGetGalleryPage(string pageTitle)
+		{
+			if (_titleToPage.TryGetValue(pageTitle.ToLowerInvariant(), out GalleryPageFactory pageFactory))
+			{
+				return pageFactory.Realize();
+			}
+
+			return null;
 		}
 
 		public async Task<bool> NavigateToTest(string pageTitle)

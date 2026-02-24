@@ -1,30 +1,51 @@
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 using Microsoft.Maui.Controls.Xaml;
 
 namespace Microsoft.Maui.Controls.SourceGen.TypeConverters;
 
-internal class BindablePropertyConverter : ISGTypeConverter
+class BindablePropertyConverter : ISGTypeConverter
 {
-	public IEnumerable<string> SupportedTypes => new[] { "BindableProperty", "Microsoft.Maui.Controls.BindableProperty" };
+	public IEnumerable<string> SupportedTypes => ["BindableProperty", "Microsoft.Maui.Controls.BindableProperty"];
 
-	public string Convert(string value, BaseNode node, ITypeSymbol toType, SourceGenContext context, LocalVariable? parentVar = null)
+	public string Convert(string value, BaseNode node, ITypeSymbol toType, IndentedTextWriter writer, SourceGenContext context, ILocalValue? parentVar = null)
 	{
-		var parts = value.Split(['.']);
+		if (node is not ValueNode vNode)
+			return "default";
+		var bpRef = NodeSGExtensions.GetBindableProperty(vNode, context);
+		if (bpRef is not null)
+			return bpRef.ToFQDisplayString();
 
-		if (parts.Length != 2)
+		// BindableProperty field not found - try heuristic for source-generated properties
+		var propertyText = vNode.Value as string ?? string.Empty;
+		var parts = propertyText.Split('.');
+		ITypeSymbol? targetType = null;
+		string propertyName;
+
+		if (parts.Length == 1)
 		{
-			// reportDiagnostic(Diagnostic.Create(Descriptors.BindablePropertyConversionFailed, LocationCreate(filePath, xmlLineInfo, value), value));
+			propertyName = parts[0];
+			var parent = vNode.Parent?.Parent as ElementNode ?? (vNode.Parent?.Parent as IListNode)?.Parent as ElementNode;
+			if (parent?.XmlType.IsOfAnyType("Trigger", "DataTrigger", "MultiTrigger", "Style") == true)
+				targetType = NodeSGExtensions.GetTargetTypeSymbol(parent, context);
+		}
+		else if (parts.Length == 2)
+		{
+			targetType = XmlTypeExtensions.GetTypeSymbol(parts[0], context, vNode);
+			propertyName = parts[1];
+		}
+		else
+		{
 			return "default";
 		}
 
-		if (parts.Length == 2)
+		if (targetType is not null && targetType.HasBindablePropertyHeuristic(propertyName, context, out var explicitPropertyName))
 		{
-			var typesymbol = parts[0]!.GetTypeSymbol(context.ReportDiagnostic, context.Compilation, context.XmlnsCache, null!)!;
-
-			var name = parts[1];
-			return typesymbol.GetBindableProperty("", ref name, out _, context, node)!.ToFQDisplayString();
+			var bpFieldName = explicitPropertyName ?? $"{propertyName}Property";
+			return $"{targetType.ToFQDisplayString()}.{bpFieldName}";
 		}
-		return "null";
+
+		return "default";
 	}
 }

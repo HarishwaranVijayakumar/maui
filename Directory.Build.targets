@@ -26,7 +26,8 @@
   <PropertyGroup>
     <!-- Microsoft.Build.Msix.props" cannot be imported again -->
     <!-- Found version-specific or distribution-specific runtime identifier(s)-->
-    <NoWarn>$(NoWarn);MSB4011;NETSDK1206</NoWarn>
+    <NoWarn>$(NoWarn);NETSDK1206;NU1702</NoWarn>
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB4011;MSB3277;NETSDK1206;NU1702</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <!-- platform version number information -->
@@ -121,5 +122,8 @@
 
   <!-- Tell typescript to stop deleting everything before building the next TFM -->
   <Target Name="TypeScriptDeleteOutputFromOtherConfigs" />
+  <!-- Don't add any outputs to any item group, we are embedding things manually -->
+  <Target Name="GetTypeScriptOutputForPublishing" />
+  <Target Name="GetTypeScriptCopyToOutputDirectoryItems" />
 
 </Project>

@@ -1,5 +1,5 @@
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Xml;
 using Microsoft.CodeAnalysis;
 using Microsoft.Maui.Controls.Xaml;
@@ -7,11 +7,11 @@ using static Microsoft.Maui.Controls.SourceGen.GeneratorHelpers;
 
 namespace Microsoft.Maui.Controls.SourceGen.TypeConverters;
 
-internal class ThicknessConverter : ISGTypeConverter
+class ThicknessConverter : ISGTypeConverter
 {
-	public IEnumerable<string> SupportedTypes => new[] { "Thickness", "Microsoft.Maui.Thickness" };
+	public IEnumerable<string> SupportedTypes => ["Thickness", "Microsoft.Maui.Thickness"];
 
-	public string Convert(string value, BaseNode node, ITypeSymbol toType, SourceGenContext context, LocalVariable? parentVar = null)
+	public string Convert(string value, BaseNode node, ITypeSymbol toType, IndentedTextWriter writer, SourceGenContext context, ILocalValue? parentVar = null)
 	{
 		var xmlLineInfo = (IXmlLineInfo)node;
 		// IMPORTANT! Update ThicknessTypeDesignConverter.IsValid if making changes here
@@ -25,18 +25,18 @@ internal class ThicknessConverter : ISGTypeConverter
 				switch (thickness.Length)
 				{
 					case 2:
-						if (double.TryParse(thickness[0], NumberStyles.Number, CultureInfo.InvariantCulture, out double h)
-							&& double.TryParse(thickness[1], NumberStyles.Number, CultureInfo.InvariantCulture, out double v))
+						if (TryParseDouble(thickness[0], out double h)
+							&& TryParseDouble(thickness[1], out double v))
 						{
 							var thicknessType = context.Compilation.GetTypeByMetadataName("Microsoft.Maui.Thickness")!;
 							return $"new {thicknessType.ToFQDisplayString()}({FormatInvariant(h)}, {FormatInvariant(v)})";
 						}
 						break;
 					case 4:
-						if (double.TryParse(thickness[0], NumberStyles.Number, CultureInfo.InvariantCulture, out double l)
-							&& double.TryParse(thickness[1], NumberStyles.Number, CultureInfo.InvariantCulture, out double t)
-							&& double.TryParse(thickness[2], NumberStyles.Number, CultureInfo.InvariantCulture, out double r)
-							&& double.TryParse(thickness[3], NumberStyles.Number, CultureInfo.InvariantCulture, out double b))
+						if (TryParseDouble(thickness[0], out double l)
+							&& TryParseDouble(thickness[1], out double t)
+							&& TryParseDouble(thickness[2], out double r)
+							&& TryParseDouble(thickness[3], out double b))
 						{
 							var thicknessType = context.Compilation.GetTypeByMetadataName("Microsoft.Maui.Thickness")!;
 							return $"new {thicknessType.ToFQDisplayString()}({FormatInvariant(l)}, {FormatInvariant(t)}, {FormatInvariant(r)}, {FormatInvariant(b)})";
@@ -46,7 +46,7 @@ internal class ThicknessConverter : ISGTypeConverter
 			}
 			else
 			{ //single uniform thickness
-				if (double.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out double l))
+				if (TryParseDouble(value, out double l))
 				{
 					var thicknessType = context.Compilation.GetTypeByMetadataName("Microsoft.Maui.Thickness")!;
 					return $"new {thicknessType.ToFQDisplayString()}({FormatInvariant(l)})";
@@ -54,7 +54,7 @@ internal class ThicknessConverter : ISGTypeConverter
 			}
 		}
 
-		context.ReportConversionFailed( xmlLineInfo, value, Descriptors.ThicknessConversionFailed);
+		context.ReportConversionFailed(xmlLineInfo, value, Descriptors.ThicknessConversionFailed);
 		return "default";
 	}
 }
