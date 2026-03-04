@@ -1,2 +1,4 @@
-#nullable enable
+﻿#nullable enable
+Microsoft.Maui.Platform.MauiAppCompatEditText.OnKeyboardBackPressed -> System.EventHandler?
 override Microsoft.Maui.Handlers.LabelHandler.GetDesiredSize(double widthConstraint, double heightConstraint) -> Microsoft.Maui.Graphics.Size
+override Microsoft.Maui.Platform.MauiAppCompatEditText.OnKeyPreIme(Android.Views.Keycode keyCode, Android.Views.KeyEvent? e) -> bool
