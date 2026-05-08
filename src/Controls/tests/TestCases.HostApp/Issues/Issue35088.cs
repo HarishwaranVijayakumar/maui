@@ -1,6 +1,6 @@
 namespace Maui.Controls.Sample.Issues;
 
-[Issue(IssueTracker.Github, 35088, "SearchHandler.BackgroundColor cannot be reset to null", PlatformAffected.Android | PlatformAffected.iOS)]
+[Issue(IssueTracker.Github, 35088, "SearchHandler.BackgroundColor cannot be reset to null", PlatformAffected.Android | PlatformAffected.iOS | PlatformAffected.macOS)]
 public class Issue35088 : TestShell
 {
 	protected override void Init()

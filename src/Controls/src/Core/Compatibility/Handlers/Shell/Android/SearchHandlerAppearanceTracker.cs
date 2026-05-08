@@ -21,6 +21,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		SearchHandler _searchHandler;
 		bool _disposed;
 		bool _hasCustomBackground;
+		LinearLayout _linearLayout;
 		AView _control;
 		InputTypes _inputType;
 
@@ -35,6 +36,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			_searchHandler.ShowSoftInputRequested += OnShowSoftInputRequested;
 			_searchHandler.HideSoftInputRequested += OnHideSoftInputRequested;
 			_editText = (_control as ViewGroup).GetChildrenOfType<EditText>().FirstOrDefault();
+			_linearLayout = (_control as ViewGroup)?.GetFirstChildOfType<LinearLayout>();
 			_editText.FocusChange += EditTextFocusChange;
 			UpdateSearchBarColors();
 			UpdateFont();
@@ -149,8 +151,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		void UpdateBackgroundColor()
 		{
-			var linearLayout = (_control as ViewGroup)?.GetFirstChildOfType<LinearLayout>();
-			if (linearLayout is null)
+			if (_linearLayout is null)
 			{
 				return;
 			}
@@ -164,13 +165,13 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			if (backgroundColor is null)
 			{
-				linearLayout.Background = null;
+				_linearLayout.Background = null;
 				_hasCustomBackground = false;
 			}
 			else
 			{
 				_hasCustomBackground = true;
-				linearLayout.SetBackgroundColor(backgroundColor.ToPlatform());
+				_linearLayout.SetBackgroundColor(backgroundColor.ToPlatform());
 			}
 		}
 

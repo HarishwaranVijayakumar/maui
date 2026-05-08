@@ -125,6 +125,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			var textField = searchBar.FindDescendantView<UITextField>();
 			if (textField is not null)
 			{
+				// On iOS 13+, UISearchTextField.BackgroundColor is typically nil;
+				// the visual chrome comes from internal layers. Resetting to nil restores native appearance.
 				_defaultBackgroundColor = textField.BackgroundColor;
 			}
 
