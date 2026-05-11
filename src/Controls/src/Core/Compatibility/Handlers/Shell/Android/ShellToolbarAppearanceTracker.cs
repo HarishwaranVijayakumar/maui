@@ -25,6 +25,14 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			var titleColor = appearance.TitleColor;
 
 			SetColors(toolbar, toolbarTracker, foreground, background, titleColor);
+
+			// Apply brush directly to the native toolbar if set
+			if (!Brush.IsNullOrEmpty(appearance.Background))
+			{
+				toolbar.BackgroundTintMode = null;
+				toolbar.BackgroundTintList = null;
+				toolbar.UpdateBackground(appearance.Background);
+			}
 		}
 
 		public virtual void ResetAppearance(AToolbar toolbar, IShellToolbarTracker toolbarTracker)
