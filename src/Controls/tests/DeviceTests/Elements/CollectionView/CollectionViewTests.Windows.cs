@@ -19,6 +19,52 @@ namespace Microsoft.Maui.DeviceTests
 {
 	public partial class CollectionViewTests
 	{
+		[Fact(DisplayName = "Horizontal CollectionView does not have AddDeleteThemeTransition (issue #35617)")]
+		public async Task HorizontalCollectionViewHasNoAddDeleteThemeTransition()
+		{
+			SetupBuilder();
+
+			var collectionView = new CollectionView
+			{
+				ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Horizontal),
+				ItemsSource = new[] { "Item 1", "Item 2" }
+			};
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, async handler =>
+			{
+				await Task.Delay(100);
+				var listView = (Microsoft.UI.Xaml.Controls.ListViewBase)collectionView.Handler.PlatformView;
+				foreach (var transition in listView.ItemContainerTransitions)
+				{
+					Assert.False(transition is Microsoft.UI.Xaml.Media.Animation.AddDeleteThemeTransition,
+						"AddDeleteThemeTransition should not be present — it causes blank gaps when items are added rapidly (issue #35617).");
+				}
+			});
+		}
+
+		[Fact(DisplayName = "Vertical CollectionView does not have AddDeleteThemeTransition (issue #35617)")]
+		public async Task VerticalCollectionViewHasNoAddDeleteThemeTransition()
+		{
+			SetupBuilder();
+
+			var collectionView = new CollectionView
+			{
+				ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Vertical),
+				ItemsSource = new[] { "Item 1", "Item 2" }
+			};
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, async handler =>
+			{
+				await Task.Delay(100);
+				var listView = (Microsoft.UI.Xaml.Controls.ListViewBase)collectionView.Handler.PlatformView;
+				foreach (var transition in listView.ItemContainerTransitions)
+				{
+					Assert.False(transition is Microsoft.UI.Xaml.Media.Animation.AddDeleteThemeTransition,
+						"AddDeleteThemeTransition should not be present — it causes blank gaps when items are added rapidly (issue #35617).");
+				}
+			});
+		}
+
 		[Fact(DisplayName = "CollectionView Disconnects Correctly")]
 		public async Task CollectionViewHandlerDisconnects()
 		{

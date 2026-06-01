@@ -222,10 +222,20 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		static ListViewBase CreateVerticalListView(LinearItemsLayout listItemsLayout)
 		{
-			return new FormsListView()
+			var verticalListView = new FormsListView()
 			{
 				ItemContainerStyle = GetVerticalItemContainerStyle(listItemsLayout)
 			};
+
+			// Omit AddDeleteThemeTransition — causes blank gaps when items are added rapidly (issue #35617).
+			verticalListView.ItemContainerTransitions = new Microsoft.UI.Xaml.Media.Animation.TransitionCollection
+			{
+				new Microsoft.UI.Xaml.Media.Animation.EntranceThemeTransition(),
+				new Microsoft.UI.Xaml.Media.Animation.ContentThemeTransition(),
+				new Microsoft.UI.Xaml.Media.Animation.ReorderThemeTransition()
+			};
+
+			return verticalListView;
 		}
 
 		static ListViewBase CreateHorizontalListView(LinearItemsLayout listItemsLayout)
@@ -239,6 +249,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			ScrollViewer.SetVerticalScrollMode(horizontalListView, WScrollMode.Disabled);
 			ScrollViewer.SetHorizontalScrollMode(horizontalListView, WScrollMode.Auto);
 			ScrollViewer.SetHorizontalScrollBarVisibility(horizontalListView, Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto);
+
+			// Omit AddDeleteThemeTransition — causes blank gaps when items are added rapidly (issue #35617).
+			horizontalListView.ItemContainerTransitions = new Microsoft.UI.Xaml.Media.Animation.TransitionCollection
+			{
+				new Microsoft.UI.Xaml.Media.Animation.EntranceThemeTransition(),
+				new Microsoft.UI.Xaml.Media.Animation.ContentThemeTransition(),
+				new Microsoft.UI.Xaml.Media.Animation.ReorderThemeTransition()
+			};
 
 			return horizontalListView;
 		}
