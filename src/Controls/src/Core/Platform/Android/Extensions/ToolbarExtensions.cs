@@ -198,9 +198,17 @@ namespace Microsoft.Maui.Controls.Platform
 					nativeToolbar.BackgroundTintMode = null;
 			}
 
-			if (!nativeToolbar.TryUpdateAppBarBackground(toolbar))
+			if (!nativeToolbar.TryUpdateAppBarBackground(toolbar) && !Brush.IsNullOrEmpty(toolbar.BarBackground))
 			{
-				nativeToolbar.Post(() => nativeToolbar.TryUpdateAppBarBackground(toolbar));
+				nativeToolbar.Post(() =>
+				{
+					if (nativeToolbar.Handle == IntPtr.Zero)
+					{
+						return;
+					}
+
+					nativeToolbar.TryUpdateAppBarBackground(toolbar);
+				});
 			}
 		}
 
@@ -208,15 +216,32 @@ namespace Microsoft.Maui.Controls.Platform
 		{
 			var appBarLayout = nativeToolbar.Parent?.GetParentOfType<AppBarLayout>();
 			if (appBarLayout is null)
+			{
 				return false;
+			}
 
-			var backgroundState = GetOrCreateDefaultAppBarBackgroundState(appBarLayout);
 			var barBackground = toolbar.BarBackground;
+			var hasCapturedDefault = _defaultAppBarBackgrounds.TryGetValue(appBarLayout, out var backgroundState);
 
 			if (Brush.IsNullOrEmpty(barBackground))
 			{
-				RestoreDefaultAppBarBackground(appBarLayout, backgroundState);
+				if (hasCapturedDefault)
+				{
+					RestoreDefaultAppBarBackground(appBarLayout, backgroundState!);
+				}
+
 				return true;
+			}
+
+			// About to modify — capture defaults lazily
+			if (!hasCapturedDefault)
+			{
+				backgroundState = new AppBarBackgroundState(
+					CloneDrawable(appBarLayout.Background),
+					CloneDrawable(appBarLayout.StatusBarForeground),
+					appBarLayout.BackgroundTintList,
+					appBarLayout.BackgroundTintMode);
+				_defaultAppBarBackgrounds.Add(appBarLayout, backgroundState);
 			}
 
 			if (barBackground is SolidColorBrush solidColor)
@@ -231,7 +256,7 @@ namespace Microsoft.Maui.Controls.Platform
 				}
 				else
 				{
-					RestoreDefaultAppBarBackground(appBarLayout, backgroundState);
+					RestoreDefaultAppBarBackground(appBarLayout, backgroundState!);
 				}
 
 				return true;
@@ -244,27 +269,18 @@ namespace Microsoft.Maui.Controls.Platform
 			return true;
 		}
 
-		static AppBarBackgroundState GetOrCreateDefaultAppBarBackgroundState(AppBarLayout appBarLayout)
-		{
-			if (_defaultAppBarBackgrounds.TryGetValue(appBarLayout, out var backgroundState))
-				return backgroundState;
-
-			backgroundState = new AppBarBackgroundState(
-				CloneDrawable(appBarLayout.Background),
-				CloneDrawable(appBarLayout.StatusBarForeground),
-				appBarLayout.BackgroundTintList,
-				appBarLayout.BackgroundTintMode);
-
-			_defaultAppBarBackgrounds.Add(appBarLayout, backgroundState);
-			return backgroundState;
-		}
-
 		static void RestoreDefaultAppBarBackground(AppBarLayout appBarLayout, AppBarBackgroundState backgroundState)
 		{
-			appBarLayout.Background = CloneDrawable(backgroundState.DefaultBackground);
-			appBarLayout.StatusBarForeground = CloneDrawable(backgroundState.DefaultStatusBarForeground);
+			var bg = backgroundState.DefaultBackground;
+			appBarLayout.Background = (bg?.Handle != IntPtr.Zero) ? bg : null;
+
+			var sbFg = backgroundState.DefaultStatusBarForeground;
+			appBarLayout.StatusBarForeground = (sbFg?.Handle != IntPtr.Zero) ? sbFg : null;
+
 			appBarLayout.BackgroundTintMode = backgroundState.DefaultBackgroundTintMode;
 			appBarLayout.BackgroundTintList = backgroundState.DefaultBackgroundTintList;
+
+			_defaultAppBarBackgrounds.Remove(appBarLayout);
 		}
 
 		static Drawable? CloneDrawable(Drawable? drawable)
