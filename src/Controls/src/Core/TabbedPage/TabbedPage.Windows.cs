@@ -20,6 +20,8 @@ namespace Microsoft.Maui.Controls
 		WFrame? _navigationFrame;
 		bool _connectedToHandler;
 		Page? _displayedPage;
+		Brush? _currentBarBackground;
+		bool _barBackgroundSubscribed;
 		WFrame NavigationFrame => _navigationFrame ?? throw new ArgumentNullException(nameof(NavigationFrame));
 		IMauiContext MauiContext => this.Handler?.MauiContext ?? throw new InvalidOperationException("MauiContext cannot be null here");
 
@@ -175,14 +177,34 @@ namespace Microsoft.Maui.Controls
 
 			OnTabbedPageDisappearing(this, EventArgs.Empty);
 
+			// Final cleanup of gradient brush subscription.
+			if (_currentBarBackground is GradientBrush currentGradientBrush && _barBackgroundSubscribed)
+			{
+				currentGradientBrush.InvalidateGradientBrushRequested -= OnBarBackgroundChanged;
+				_barBackgroundSubscribed = false;
+			}
+			_currentBarBackground = null;
+
 			_navigationView = null;
 			_navigationRootManager = null;
 			_navigationFrame = null;
 			_displayedPage = null;
 		}
 
+		void OnBarBackgroundChanged(object? sender, EventArgs e)
+		{
+			_navigationView?.UpdateTopNavAreaBackground(_currentBarBackground ?? BarBackgroundColor?.AsPaint());
+		}
+
 		void OnTabbedPageAppearing(object? sender, EventArgs e)
 		{
+			// Re-subscribe to gradient brush updates if the subscription was dropped on Disappearing.
+			if (_currentBarBackground is GradientBrush gradientBrush && !_barBackgroundSubscribed)
+			{
+				gradientBrush.InvalidateGradientBrushRequested += OnBarBackgroundChanged;
+				_barBackgroundSubscribed = true;
+			}
+
 			if (_navigationView != null)
 			{
 				_navigationView.PaneDisplayMode = NavigationViewPaneDisplayMode.Top;
@@ -205,6 +227,13 @@ namespace Microsoft.Maui.Controls
 
 		void OnTabbedPageDisappearing(object? sender, EventArgs e)
 		{
+			// Unsubscribe from the shared gradient brush so the page does not keep it alive when not visible.
+			if (_currentBarBackground is GradientBrush gradientBrush && _barBackgroundSubscribed)
+			{
+				gradientBrush.InvalidateGradientBrushRequested -= OnBarBackgroundChanged;
+				_barBackgroundSubscribed = false;
+			}
+
 			if (_navigationView != null)
 			{
 				// Clear stale selection so the NavigationView does not ghost-show this
@@ -341,6 +370,20 @@ namespace Microsoft.Maui.Controls
 
 		internal static void MapBarBackground(ITabbedViewHandler handler, TabbedPage view)
 		{
+			if (view._currentBarBackground is GradientBrush oldGradientBrush && view._barBackgroundSubscribed)
+			{
+				oldGradientBrush.InvalidateGradientBrushRequested -= view.OnBarBackgroundChanged;
+				view._barBackgroundSubscribed = false;
+			}
+
+			view._currentBarBackground = view.BarBackground;
+
+			if (view._currentBarBackground is GradientBrush newGradientBrush)
+			{
+				newGradientBrush.InvalidateGradientBrushRequested += view.OnBarBackgroundChanged;
+				view._barBackgroundSubscribed = true;
+			}
+
 			view._navigationView?.UpdateTopNavAreaBackground(view.BarBackground ?? view.BarBackgroundColor?.AsPaint());
 		}
 
