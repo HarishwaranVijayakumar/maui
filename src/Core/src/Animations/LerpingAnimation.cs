@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Microsoft.Maui.Animations
 {
@@ -97,9 +98,10 @@ namespace Microsoft.Maui.Animations
 				if (Lerp != null! && StartValue != null && EndValue != null)
 					CurrentValue = Lerp.Calculate?.Invoke(StartValue, EndValue, Progress);
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
 				HasFinished = true;
+				Debug.WriteLine($"Error in LerpingAnimation.Update: {ex}");
 			}
 		}
 	}
