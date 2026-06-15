@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
@@ -239,9 +240,10 @@ namespace Microsoft.Maui.Animations
 				Step?.Invoke(Progress);
 				HasFinished = percent == 1;
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
 				HasFinished = true;
+				Debug.WriteLine($"Error in Animation.Update: {ex}");
 			}
 		}
 
