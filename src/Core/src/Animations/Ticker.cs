@@ -48,7 +48,6 @@ namespace Microsoft.Maui.Animations
 			};
 
 			_timer.Elapsed += OnTimerElapsed;
-			_timer.AutoReset = true;
 			_timer.Start();
 		}
 

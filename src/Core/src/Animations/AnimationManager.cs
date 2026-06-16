@@ -81,7 +81,7 @@ namespace Microsoft.Maui.Animations
 			}
 
 			var now = GetCurrentTick();
-			var milliseconds = TimeSpan.FromMilliseconds(now - _lastUpdate).TotalMilliseconds;
+			var milliseconds = now - _lastUpdate;
 			_lastUpdate = now;
 
 			var animations = new List<Animation>(_animations);
