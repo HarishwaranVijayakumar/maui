@@ -94,8 +94,8 @@ namespace Microsoft.Maui.Controls
 			=> LayoutToAsync(view, bounds, length, easing);
 
 		/// <summary>
-		/// <summary>Returns a task that eases the bounds of the <see cref="VisualElement" /> that is specified by the <paramref name="view" />
-		/// to the rectangle that is specified by the <paramref name="bounds" /> parameter.</summary>
+		/// Returns a task that eases the bounds of the <see cref="VisualElement" /> that is specified by the <paramref name="view" />
+		/// to the rectangle that is specified by the <paramref name="bounds" /> parameter.
 		/// </summary>
 		/// <param name="view">The view on which this method operates.</param>
 		/// <param name="bounds">The layout bounds.</param>
