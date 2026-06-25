@@ -61,6 +61,11 @@ namespace Microsoft.Maui.Media
 		AndroidTextToSpeech tts;
 		TaskCompletionSource<bool> tcsInitialize;
 		TaskCompletionSource<bool> tcsUtterances;
+		TextToSpeechImplementation textToSpeechImpl;
+		string currentUtteranceId;
+		int numExpectedUtterances = 0;
+		int numCompletedUtterances = 0;
+		bool utteranceStartedFired = false;
 
 		Task<bool> Initialize()
 		{
@@ -97,9 +102,6 @@ namespace Microsoft.Maui.Media
 			base.Dispose(disposing);
 		}
 
-		int numExpectedUtterances = 0;
-		int numCompletedUtterances = 0;
-
 		public async Task SpeakAsync(string text, int max, SpeechOptions options, CancellationToken cancelToken)
 		{
 			await Initialize();
@@ -109,6 +111,8 @@ namespace Microsoft.Maui.Media
 				await tcsUtterances.Task;
 
 			tcsUtterances = new TaskCompletionSource<bool>();
+			utteranceStartedFired = false;
+			numCompletedUtterances = 0;
 
 			if (cancelToken != default)
 			{
@@ -164,14 +168,16 @@ namespace Microsoft.Maui.Media
 
 			numExpectedUtterances = parts.Count;
 
-			var guid = Guid.NewGuid().ToString();
+			// Generate or use provided utterance ID
+			currentUtteranceId = options?.UtteranceId ?? Guid.NewGuid().ToString();
+			textToSpeechImpl = TextToSpeech.Default as TextToSpeechImplementation;
 
 			for (var i = 0; i < parts.Count && !cancelToken.IsCancellationRequested; i++)
 			{
 				// We require the utterance id to be set if we want the completed listener to fire
 				var map = new Dictionary<string, string>(StringComparer.Ordinal)
 				{
-					{ AndroidTextToSpeech.Engine.KeyParamUtteranceId, $"{guid}.{i}" }
+					{ AndroidTextToSpeech.Engine.KeyParamUtteranceId, $"{currentUtteranceId}.{i}" }
 				};
 
 				if (options != null && options.Volume.HasValue)
@@ -235,7 +241,21 @@ namespace Microsoft.Maui.Media
 
 		public void OnUtteranceCompleted(string utteranceId)
 		{
+			// Fire UtteranceStarted event on the first completion callback
+			if (!utteranceStartedFired && textToSpeechImpl != null)
+			{
+				utteranceStartedFired = true;
+				textToSpeechImpl.OnUtteranceStarted(new UtteranceEventArgs(currentUtteranceId));
+			}
+
 			numCompletedUtterances++;
+
+			// Fire UtteranceCompleted event for this specific part
+			if (textToSpeechImpl != null)
+			{
+				textToSpeechImpl.OnUtteranceCompleted(new UtteranceEventArgs(currentUtteranceId));
+			}
+
 			if (numCompletedUtterances >= numExpectedUtterances)
 				tcsUtterances?.TrySetResult(true);
 		}

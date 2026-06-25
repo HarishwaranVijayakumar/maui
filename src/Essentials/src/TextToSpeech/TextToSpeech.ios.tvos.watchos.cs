@@ -11,6 +11,7 @@ namespace Microsoft.Maui.Media
 	{
 #pragma warning disable CA1416 // https://github.com/xamarin/xamarin-macios/issues/14619
 		readonly Lazy<AVSpeechSynthesizer> speechSynthesizer = new(() => new AVSpeechSynthesizer());
+		string currentUtteranceId;
 
 		Task<IEnumerable<Locale>> PlatformGetLocalesAsync() =>
 			Task.FromResult(AVSpeechSynthesisVoice.GetSpeechVoices()
@@ -18,6 +19,9 @@ namespace Microsoft.Maui.Media
 
 		async Task PlatformSpeakAsync(string text, SpeechOptions options, CancellationToken cancelToken)
 		{
+			// Generate or use provided utterance ID
+			currentUtteranceId = options?.UtteranceId ?? Guid.NewGuid().ToString();
+
 			using var speechUtterance = GetSpeechUtterance(text, options);
 			await SpeakUtterance(speechUtterance, cancelToken);
 		}
@@ -56,6 +60,7 @@ namespace Microsoft.Maui.Media
 			var tcsUtterance = new TaskCompletionSource<bool>();
 			try
 			{
+				speechSynthesizer.Value.DidStartSpeechUtterance += OnStartedSpeechUtterance;
 				speechSynthesizer.Value.DidFinishSpeechUtterance += OnFinishedSpeechUtterance;
 				speechSynthesizer.Value.SpeakUtterance(speechUtterance);
 				using (cancelToken.Register(TryCancel))
@@ -65,6 +70,7 @@ namespace Microsoft.Maui.Media
 			}
 			finally
 			{
+				speechSynthesizer.Value.DidStartSpeechUtterance -= OnStartedSpeechUtterance;
 				speechSynthesizer.Value.DidFinishSpeechUtterance -= OnFinishedSpeechUtterance;
 			}
 
@@ -74,10 +80,19 @@ namespace Microsoft.Maui.Media
 				tcsUtterance?.TrySetResult(true);
 			}
 
+			void OnStartedSpeechUtterance(object sender, AVSpeechSynthesizerUteranceEventArgs args)
+			{
+				if (speechUtterance == args.Utterance)
+					OnUtteranceStarted(new UtteranceEventArgs(currentUtteranceId));
+			}
+
 			void OnFinishedSpeechUtterance(object sender, AVSpeechSynthesizerUteranceEventArgs args)
 			{
 				if (speechUtterance == args.Utterance)
+				{
+					OnUtteranceCompleted(new UtteranceEventArgs(currentUtteranceId));
 					tcsUtterance?.TrySetResult(true);
+				}
 			}
 		}
 #pragma warning restore CA1416

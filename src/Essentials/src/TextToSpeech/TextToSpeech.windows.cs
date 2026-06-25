@@ -14,12 +14,17 @@ namespace Microsoft.Maui.Media
 {
 	partial class TextToSpeechImplementation : ITextToSpeech
 	{
+		string currentUtteranceId;
+
 		Task<IEnumerable<Locale>> PlatformGetLocalesAsync() =>
 			Task.FromResult(SpeechSynthesizer.AllVoices.Select(v => new Locale(v.Language, null, v.DisplayName, v.Id)));
 
 		async Task PlatformSpeakAsync(string text, SpeechOptions options, CancellationToken cancelToken = default)
 		{
 			var tcsUtterance = new TaskCompletionSource<bool>();
+
+			// Generate or use provided utterance ID
+			currentUtteranceId = options?.UtteranceId ?? Guid.NewGuid().ToString();
 
 			try
 			{
@@ -39,6 +44,10 @@ namespace Microsoft.Maui.Media
 
 				player.MediaEnded += PlayerMediaEnded;
 				player.Source = MediaSource.CreateFromStream(stream, stream.ContentType);
+				
+				// Fire UtteranceStarted event
+				OnUtteranceStarted(new UtteranceEventArgs(currentUtteranceId));
+				
 				player.Play();
 
 				void OnCancel()
@@ -57,12 +66,14 @@ namespace Microsoft.Maui.Media
 
 				void PlayerMediaEnded(MediaPlayer sender, object args)
 				{
+					OnUtteranceCompleted(new UtteranceEventArgs(currentUtteranceId));
 					tcsUtterance.TrySetResult(true);
 				}
 			}
 			catch (Exception ex)
 			{
 				Debug.WriteLine("Unable to playback stream: " + ex);
+				OnUtteranceFailed(new UtteranceErrorEventArgs(currentUtteranceId, ex.Message));
 				tcsUtterance.TrySetException(ex);
 			}
 		}

@@ -12,6 +12,8 @@ namespace Microsoft.Maui.Media
 		readonly Lazy<NSSpeechSynthesizer> speechSynthesizer = new Lazy<NSSpeechSynthesizer>(() =>
 			new NSSpeechSynthesizer { Delegate = new SpeechSynthesizerDelegate() });
 
+		string currentUtteranceId;
+
 		Task<IEnumerable<Locale>> PlatformGetLocalesAsync() =>
 			Task.FromResult(NSSpeechSynthesizer.AvailableVoices
 				.Select(voice => NSSpeechSynthesizer.AttributesForVoice(voice))
@@ -21,6 +23,9 @@ namespace Microsoft.Maui.Media
 		{
 			var ss = speechSynthesizer.Value;
 			var ssd = (SpeechSynthesizerDelegate)ss.Delegate;
+
+			// Generate or use provided utterance ID
+			currentUtteranceId = options?.UtteranceId ?? Guid.NewGuid().ToString();
 
 			var tcs = new TaskCompletionSource<bool>();
 			try
@@ -37,6 +42,7 @@ namespace Microsoft.Maui.Media
 						ss.Rate = options.Rate.Value;
 				}
 
+				ssd.StartedSpeaking += OnStartedSpeaking;
 				ssd.FinishedSpeaking += OnFinishedSpeaking;
 				ssd.EncounteredError += OnEncounteredError;
 
@@ -49,6 +55,7 @@ namespace Microsoft.Maui.Media
 			}
 			finally
 			{
+				ssd.StartedSpeaking -= OnStartedSpeaking;
 				ssd.FinishedSpeaking -= OnFinishedSpeaking;
 				ssd.EncounteredError -= OnEncounteredError;
 			}
@@ -62,13 +69,21 @@ namespace Microsoft.Maui.Media
 				tcs.TrySetResult(true);
 			}
 
+			void OnStartedSpeaking()
+			{
+				OnUtteranceStarted(new UtteranceEventArgs(currentUtteranceId));
+			}
+
 			void OnFinishedSpeaking(bool completed)
 			{
+				if (completed)
+					OnUtteranceCompleted(new UtteranceEventArgs(currentUtteranceId));
 				tcs.TrySetResult(completed);
 			}
 
 			void OnEncounteredError(string errorMessage)
 			{
+				OnUtteranceFailed(new UtteranceErrorEventArgs(currentUtteranceId, errorMessage));
 				// TODO: a real exception type here
 				tcs.TrySetException(new Exception(errorMessage));
 			}
@@ -86,6 +101,8 @@ namespace Microsoft.Maui.Media
 
 		class SpeechSynthesizerDelegate : NSSpeechSynthesizerDelegate
 		{
+			public event Action StartedSpeaking;
+
 			public event Action<bool> FinishedSpeaking;
 
 			public event Action<string> EncounteredError;
@@ -95,6 +112,9 @@ namespace Microsoft.Maui.Media
 
 			public override void DidFinishSpeaking(NSSpeechSynthesizer sender, bool finishedSpeaking) =>
 				FinishedSpeaking?.Invoke(finishedSpeaking);
+
+			public override void DidStartSpeaking(NSSpeechSynthesizer sender) =>
+				StartedSpeaking?.Invoke();
 		}
 	}
 }

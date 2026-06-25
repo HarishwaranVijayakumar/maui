@@ -1,5 +1,20 @@
-#nullable enable
-*REMOVED*Microsoft.Maui.Storage.IFilePicker.PickMultipleAsync(Microsoft.Maui.Storage.PickOptions? options = null) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Microsoft.Maui.Storage.FileResult?>!>!
+﻿#nullable enable
+Microsoft.Maui.Media.ITextToSpeech.UtteranceCompleted -> System.EventHandler<Microsoft.Maui.Media.UtteranceEventArgs!>?
+Microsoft.Maui.Media.ITextToSpeech.UtteranceFailed -> System.EventHandler<Microsoft.Maui.Media.UtteranceErrorEventArgs!>?
+Microsoft.Maui.Media.ITextToSpeech.UtteranceStarted -> System.EventHandler<Microsoft.Maui.Media.UtteranceEventArgs!>?
+Microsoft.Maui.Media.SpeechOptions.UtteranceId.get -> string?
+Microsoft.Maui.Media.SpeechOptions.UtteranceId.set -> void
+Microsoft.Maui.Media.UtteranceErrorEventArgs
+Microsoft.Maui.Media.UtteranceErrorEventArgs.ErrorMessage.get -> string?
+Microsoft.Maui.Media.UtteranceErrorEventArgs.UtteranceErrorEventArgs(string! utteranceId, string? errorMessage = null) -> void
+Microsoft.Maui.Media.UtteranceErrorEventArgs.UtteranceId.get -> string!
+Microsoft.Maui.Media.UtteranceEventArgs
+Microsoft.Maui.Media.UtteranceEventArgs.UtteranceEventArgs(string! utteranceId) -> void
+Microsoft.Maui.Media.UtteranceEventArgs.UtteranceId.get -> string!
 Microsoft.Maui.Storage.IFilePicker.PickMultipleAsync(Microsoft.Maui.Storage.PickOptions? options = null) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Microsoft.Maui.Storage.FileResult!>?>!
-*REMOVED*static Microsoft.Maui.Storage.FilePicker.PickMultipleAsync(Microsoft.Maui.Storage.PickOptions? options = null) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Microsoft.Maui.Storage.FileResult?>!>!
+*REMOVED*Microsoft.Maui.Storage.IFilePicker.PickMultipleAsync(Microsoft.Maui.Storage.PickOptions? options = null) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Microsoft.Maui.Storage.FileResult?>!>!
+static Microsoft.Maui.Media.TextToSpeech.UtteranceCompleted -> System.EventHandler<Microsoft.Maui.Media.UtteranceEventArgs!>?
+static Microsoft.Maui.Media.TextToSpeech.UtteranceFailed -> System.EventHandler<Microsoft.Maui.Media.UtteranceErrorEventArgs!>?
+static Microsoft.Maui.Media.TextToSpeech.UtteranceStarted -> System.EventHandler<Microsoft.Maui.Media.UtteranceEventArgs!>?
 static Microsoft.Maui.Storage.FilePicker.PickMultipleAsync(Microsoft.Maui.Storage.PickOptions? options = null) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Microsoft.Maui.Storage.FileResult!>?>!
+*REMOVED*static Microsoft.Maui.Storage.FilePicker.PickMultipleAsync(Microsoft.Maui.Storage.PickOptions? options = null) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Microsoft.Maui.Storage.FileResult?>!>!

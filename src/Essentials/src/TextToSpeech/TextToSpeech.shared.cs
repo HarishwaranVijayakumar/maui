@@ -8,6 +8,53 @@ using Debug = System.Diagnostics.Debug;
 namespace Microsoft.Maui.Media
 {
 	/// <summary>
+	/// Event args for utterance events.
+	/// </summary>
+	public class UtteranceEventArgs : EventArgs
+	{
+		/// <summary>
+		/// Gets the unique identifier for this utterance.
+		/// </summary>
+		public string UtteranceId { get; }
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="UtteranceEventArgs"/> class.
+		/// </summary>
+		/// <param name="utteranceId">The utterance identifier.</param>
+		public UtteranceEventArgs(string utteranceId)
+		{
+			UtteranceId = utteranceId ?? throw new ArgumentNullException(nameof(utteranceId));
+		}
+	}
+
+	/// <summary>
+	/// Event args for utterance error events.
+	/// </summary>
+	public class UtteranceErrorEventArgs : EventArgs
+	{
+		/// <summary>
+		/// Gets the unique identifier for this utterance.
+		/// </summary>
+		public string UtteranceId { get; }
+
+		/// <summary>
+		/// Gets the error message.
+		/// </summary>
+		public string? ErrorMessage { get; }
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="UtteranceErrorEventArgs"/> class.
+		/// </summary>
+		/// <param name="utteranceId">The utterance identifier.</param>
+		/// <param name="errorMessage">The error message.</param>
+		public UtteranceErrorEventArgs(string utteranceId, string? errorMessage = null)
+		{
+			UtteranceId = utteranceId ?? throw new ArgumentNullException(nameof(utteranceId));
+			ErrorMessage = errorMessage;
+		}
+	}
+
+	/// <summary>
 	/// The TextToSpeech API enables an application to utilize the built-in text-to-speech engines to speak back text from the device and also to query available languages that the engine can support.
 	/// </summary>
 	public interface ITextToSpeech
@@ -26,6 +73,21 @@ namespace Microsoft.Maui.Media
 		/// <param name="cancelToken">Optional cancellation token to stop speaking.</param>
 		/// <returns>A <see cref="Task"/> object with the current status of the asynchronous operation.</returns>
 		Task SpeakAsync(string text, SpeechOptions? options = default, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Occurs when an utterance starts speaking.
+		/// </summary>
+		event EventHandler<UtteranceEventArgs>? UtteranceStarted;
+
+		/// <summary>
+		/// Occurs when an utterance finishes speaking.
+		/// </summary>
+		event EventHandler<UtteranceEventArgs>? UtteranceCompleted;
+
+		/// <summary>
+		/// Occurs when an utterance encounters an error.
+		/// </summary>
+		event EventHandler<UtteranceErrorEventArgs>? UtteranceFailed;
 	}
 
 	/// <summary>
@@ -70,6 +132,57 @@ namespace Microsoft.Maui.Media
 
 		internal static void SetDefault(ITextToSpeech? implementation) =>
 			defaultImplementation = implementation;
+
+		/// <summary>
+		/// Occurs when an utterance starts being spoken.
+		/// </summary>
+		public static event EventHandler<UtteranceEventArgs>? UtteranceStarted
+		{
+			add
+			{
+				if (Default is TextToSpeechImplementation impl)
+					impl.UtteranceStarted += value;
+			}
+			remove
+			{
+				if (Default is TextToSpeechImplementation impl)
+					impl.UtteranceStarted -= value;
+			}
+		}
+
+		/// <summary>
+		/// Occurs when an utterance finishes being spoken.
+		/// </summary>
+		public static event EventHandler<UtteranceEventArgs>? UtteranceCompleted
+		{
+			add
+			{
+				if (Default is TextToSpeechImplementation impl)
+					impl.UtteranceCompleted += value;
+			}
+			remove
+			{
+				if (Default is TextToSpeechImplementation impl)
+					impl.UtteranceCompleted -= value;
+			}
+		}
+
+		/// <summary>
+		/// Occurs when an utterance fails to speak.
+		/// </summary>
+		public static event EventHandler<UtteranceErrorEventArgs>? UtteranceFailed
+		{
+			add
+			{
+				if (Default is TextToSpeechImplementation impl)
+					impl.UtteranceFailed += value;
+			}
+			remove
+			{
+				if (Default is TextToSpeechImplementation impl)
+					impl.UtteranceFailed -= value;
+			}
+		}
 
 		internal static List<string> SplitSpeak(string text, int max)
 		{
@@ -153,6 +266,19 @@ namespace Microsoft.Maui.Media
 		internal const float RateMin = 0.1f;
 
 		SemaphoreSlim? semaphore;
+
+		public event EventHandler<UtteranceEventArgs>? UtteranceStarted;
+		public event EventHandler<UtteranceEventArgs>? UtteranceCompleted;
+		public event EventHandler<UtteranceErrorEventArgs>? UtteranceFailed;
+
+		internal virtual void OnUtteranceStarted(UtteranceEventArgs args) =>
+			UtteranceStarted?.Invoke(this, args);
+
+		internal virtual void OnUtteranceCompleted(UtteranceEventArgs args) =>
+			UtteranceCompleted?.Invoke(this, args);
+
+		internal virtual void OnUtteranceFailed(UtteranceErrorEventArgs args) =>
+			UtteranceFailed?.Invoke(this, args);
 
 		public Task<IEnumerable<Locale>> GetLocalesAsync() =>
 			PlatformGetLocalesAsync();
@@ -271,5 +397,11 @@ namespace Microsoft.Maui.Media
 		/// </summary>
 		/// <remarks>This value should be between <c>0.1f</c> and <c>2.0f</c>.</remarks>
 		public float? Rate { get; set; }
+
+		/// <summary>
+		/// Gets or sets a unique identifier for tracking this utterance.
+		/// </summary>
+		/// <remarks>If not provided, a unique identifier will be generated automatically. This ID will be included in utterance event callbacks.</remarks>
+		public string? UtteranceId { get; set; }
 	}
 }

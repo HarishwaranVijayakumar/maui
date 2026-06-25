@@ -11,6 +11,8 @@ namespace Microsoft.Maui.Media
 		TtsClient tts = null;
 		TaskCompletionSource<bool> tcsInitialize = null;
 		TaskCompletionSource<bool> tcsUtterances = null;
+		string currentUtteranceId;
+		bool utteranceStartedFired = false;
 
 		async Task PlatformSpeakAsync(string text, SpeechOptions options, CancellationToken cancelToken = default)
 		{
@@ -20,6 +22,10 @@ namespace Microsoft.Maui.Media
 				await tcsUtterances.Task;
 
 			tcsUtterances = new TaskCompletionSource<bool>();
+			utteranceStartedFired = false;
+
+			// Generate or use provided utterance ID
+			currentUtteranceId = options?.UtteranceId ?? Guid.NewGuid().ToString();
 
 			cancelToken.Register(() =>
 			{
@@ -46,6 +52,11 @@ namespace Microsoft.Maui.Media
 				rate = (int)Math.Round(options.Rate.Value / RateMax * tts.GetSpeedRange().Max, MidpointRounding.AwayFromZero);
 
 			tts.AddText(text, language, (int)voiceType, rate);
+			
+			// Fire UtteranceStarted event
+			OnUtteranceStarted(new UtteranceEventArgs(currentUtteranceId));
+			utteranceStartedFired = true;
+			
 			tts.Play();
 
 			await tcsUtterances.Task;
@@ -76,6 +87,8 @@ namespace Microsoft.Maui.Media
 
 			tts.UtteranceCompleted += (s, e) =>
 			{
+				if (utteranceStartedFired)
+					OnUtteranceCompleted(new UtteranceEventArgs(currentUtteranceId));
 				tts?.Stop();
 				tcsUtterances?.TrySetResult(true);
 			};
