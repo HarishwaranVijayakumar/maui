@@ -1,10 +1,12 @@
-using Android.Views;
+using System;
 using Google.Android.Material.Slider;
 
 namespace Microsoft.Maui.Handlers;
 
 public class SliderHandler2 : ViewHandler<ISlider, Slider>
 {
+    SliderListener? _listener;
+
     public static PropertyMapper<ISlider, SliderHandler2> Mapper =
             new(ViewMapper)
             {
@@ -34,51 +36,22 @@ public class SliderHandler2 : ViewHandler<ISlider, Slider>
 
     protected override void ConnectHandler(Slider platformView)
     {
-        // TODO: Material3: Add listeners when https://github.com/dotnet/android-libraries/issues/230 is resolved
-        // Using Touch event as a workaround for missing addOnChangeListener binding
-        // See: https://github.com/dotnet/android-libraries/issues/230#issuecomment-891341936
-        platformView.Touch += Slider_Touch;
-    }
-
-    void Slider_Touch(object? sender, View.TouchEventArgs e)
-    {
-        if (sender is not Slider slider)
-        {
-            return;
-        }
-
-        switch (e.Event?.Action)
-        {
-            case MotionEventActions.Down:
-                {
-                    OnStartTrackingTouch(slider);
-                    break;
-                }
-            case MotionEventActions.Move:
-                {
-                    OnValueChanged(slider, slider.Value);
-                    break;
-                }
-            case MotionEventActions.Up:
-                {
-                    OnValueChanged(slider, slider.Value);
-                    OnStopTrackingTouch(slider);
-                    break;
-                }
-            case MotionEventActions.Cancel:
-                {
-                    OnStopTrackingTouch(slider);
-                    break;
-                }
-        }
-        // Pass through to Material3 Slider so it can update its own visual state
-        e.Handled = false;
+        base.ConnectHandler(platformView);
+        _listener = new SliderListener(this);
+        platformView.AddOnChangeListener(_listener);
+        platformView.AddOnSliderTouchListener(_listener);
     }
 
     protected override void DisconnectHandler(Slider platformView)
     {
-        // TODO: Material3: Cleanup listeners when implemented
-        platformView.Touch -= Slider_Touch;
+        if (_listener is not null)
+        {
+            platformView.RemoveOnChangeListener(_listener);
+            platformView.RemoveOnSliderTouchListener(_listener);
+            _listener.Dispose();
+            _listener = null;
+        }
+        base.DisconnectHandler(platformView);
     }
 
     public static void MapValue(SliderHandler2 handler, ISlider slider)
@@ -119,12 +92,6 @@ public class SliderHandler2 : ViewHandler<ISlider, Slider>
             .FireAndForget(handler);
     }
 
-    void OnStartTrackingTouch(Slider slider) =>
-        VirtualView?.DragStarted();
-
-    void OnStopTrackingTouch(Slider slider) =>
-        VirtualView?.DragCompleted();
-
     void OnValueChanged(Slider slider, float value)
     {
         if (VirtualView is null)
@@ -137,4 +104,44 @@ public class SliderHandler2 : ViewHandler<ISlider, Slider>
             VirtualView.Value = value;
         }
     }
+
+    // Uses IBaseOnChangeListener/IBaseOnSliderTouchListener (erased Object parameter) to avoid
+    // ACW type erasure clash with Slider.IOnChangeListener/IOnSliderTouchListener.
+    // Switch to the typed interfaces once https://github.com/dotnet/android-libraries/issues/1482
+    // ships in a future Xamarin.Google.Android.Material release.
+#pragma warning disable XAOBS001 // IBaseOnChangeListener/IBaseOnSliderTouchListener are marked as Google-internal
+    class SliderListener : Java.Lang.Object, IBaseOnChangeListener, IBaseOnSliderTouchListener
+    {
+        readonly WeakReference<SliderHandler2> _handler;
+
+        public SliderListener(SliderHandler2 handler)
+        {
+            _handler = new WeakReference<SliderHandler2>(handler);
+        }
+
+        public void OnValueChange(Java.Lang.Object slider, float value, bool fromUser)
+        {
+            if (fromUser && slider is Slider platformSlider && _handler.TryGetTarget(out var handler))
+            {
+                handler.OnValueChanged(platformSlider, value);
+            }
+        }
+
+        public void OnStartTrackingTouch(Java.Lang.Object slider)
+        {
+            if (_handler.TryGetTarget(out var handler))
+            {
+                handler.VirtualView?.DragStarted();
+            }
+        }
+
+        public void OnStopTrackingTouch(Java.Lang.Object slider)
+        {
+            if (_handler.TryGetTarget(out var handler))
+            {
+                handler.VirtualView?.DragCompleted();
+            }
+        }
+    }
+#pragma warning restore XAOBS001
 }
