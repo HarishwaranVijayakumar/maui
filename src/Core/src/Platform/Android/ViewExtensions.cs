@@ -505,6 +505,41 @@ namespace Microsoft.Maui.Platform
 			platformView.UpdateBackgroundImageSourceAsync(imageSource, provider).FireAndForget(handler);
 		}
 
+		internal static void UpdateButtonBackgroundImageSource(this AView platformView, IImageSource? imageSource, IElementHandler? handler, IButtonStroke stroke,
+			Func<global::Android.Content.Res.ColorStateList?>? getDefaultRippleColor = null,
+			Action? beforeSet = null)
+		{
+			var provider = handler?.GetRequiredService<IImageSourceServiceProvider>();
+			platformView.UpdateButtonBackgroundImageSourceAsync(imageSource, provider, stroke, getDefaultRippleColor, beforeSet).FireAndForget(handler);
+		}
+
+		internal static async Task UpdateButtonBackgroundImageSourceAsync(this AView platformView, IImageSource? imageSource, IImageSourceServiceProvider? provider, IButtonStroke stroke,
+			Func<global::Android.Content.Res.ColorStateList?>? getDefaultRippleColor = null,
+			Action? beforeSet = null)
+		{
+			if (provider is null || imageSource is null)
+			{
+				return;
+			}
+
+			Context? context = platformView.Context;
+			if (context is null)
+			{
+				return;
+			}
+
+			var service = provider.GetRequiredImageSourceService(imageSource);
+			var result = await service.GetDrawableAsync(imageSource, context);
+			var backgroundImageDrawable = result?.Value;
+
+			if (!platformView.IsAlive() || backgroundImageDrawable is null)
+			{
+				return;
+			}
+
+			platformView.UpdateMauiRippleDrawableImageBackground(backgroundImageDrawable, stroke, getDefaultRippleColor, beforeSet);
+		}
+
 		public static void UpdateToolTip(this AView view, ToolTip? tooltip)
 		{
 			string? text = tooltip?.Content?.ToString();
