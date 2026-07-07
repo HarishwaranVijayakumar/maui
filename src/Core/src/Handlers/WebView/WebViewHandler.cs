@@ -29,6 +29,7 @@ namespace Microsoft.Maui.Handlers
 	[nameof(IView.Background)] = MapBackground,
 #endif
 #if __ANDROID__
+			[nameof(IView.Background)] = MapBackground,
 			[nameof(WebViewClient)] = MapWebViewClient,
 			[nameof(WebChromeClient)] = MapWebChromeClient,
 			[nameof(WebView.Settings)] =  MapWebViewSettings

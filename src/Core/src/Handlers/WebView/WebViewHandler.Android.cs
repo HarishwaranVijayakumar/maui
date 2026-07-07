@@ -11,6 +11,10 @@ namespace Microsoft.Maui.Handlers
 	{
 		internal const string AssetBaseUrl = "file:///android_asset/";
 
+		public override bool NeedsContainer =>
+			VirtualView?.Background is ImageSourcePaint ||
+			base.NeedsContainer;
+
 		bool _firstRun = true;
 		readonly HashSet<string> _loadedCookies = new HashSet<string>();
 
@@ -79,6 +83,20 @@ namespace Microsoft.Maui.Handlers
 		public static void MapUserAgent(IWebViewHandler handler, IWebView webView)
 		{
 			handler.PlatformView.UpdateUserAgent(webView);
+		}
+
+		public static void MapBackground(IWebViewHandler handler, IWebView webView)
+		{
+			if (webView.Background is ImageSourcePaint)
+			{
+				handler.UpdateValue(nameof(IViewHandler.ContainerView));
+				handler.ToPlatform().UpdateBackground(webView);
+				handler.PlatformView?.SetBackgroundColor(global::Android.Graphics.Color.Transparent);
+			}
+			else
+			{
+				handler.PlatformView?.UpdateBackground(webView);
+			}
 		}
 
 		public static void MapWebViewClient(IWebViewHandler handler, IWebView webView)
