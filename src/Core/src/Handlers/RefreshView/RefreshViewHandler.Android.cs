@@ -1,4 +1,6 @@
 ﻿using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Platform;
+using AView = Android.Views.View;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -50,12 +52,25 @@ namespace Microsoft.Maui.Handlers
 
 		static void UpdateBackground(IRefreshViewHandler handler)
 		{
-			if (handler.VirtualView.Background == null)
+			if (handler.VirtualView.Background is null)
+			{
 				return;
+			}
 
-			var color = handler.VirtualView.Background.ToColor()?.ToInt();
-			if (color != null)
-				handler.PlatformView.SetProgressBackgroundColorSchemeColor(color.Value);
+			if (handler.VirtualView.Background is ImageSourcePaint)
+			{
+				// Image backgrounds go on the view itself
+				((AView)handler.PlatformView).UpdateBackground(handler.VirtualView);
+			}
+			else
+			{
+				// Solid/gradient colors go on the progress indicator
+				var color = handler.VirtualView.Background.ToColor()?.ToInt();
+				if (color is not null)
+				{
+					handler.PlatformView.SetProgressBackgroundColorSchemeColor(color.Value);
+				}
+			}
 		}
 
 		public static void MapBackground(IRefreshViewHandler handler, IView view)
