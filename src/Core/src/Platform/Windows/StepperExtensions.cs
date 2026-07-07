@@ -1,4 +1,5 @@
 ﻿using Microsoft.Maui.Graphics;
+using Microsoft.UI.Xaml.Media;
 
 namespace Microsoft.Maui.Platform
 {
@@ -27,12 +28,39 @@ namespace Microsoft.Maui.Platform
 		public static void UpdateBackground(this MauiStepper platformStepper, IStepper stepper)
 		{
 			var background = stepper?.Background;
-			if (background == null)
+			if (background is null)
 			{
 				return;
 			}
 
-			platformStepper.ButtonBackground = background.ToPlatform();
+			if (background is ImageSourcePaint sourcePaint)
+			{
+				platformStepper.UpdateBackgroundImageSource(sourcePaint.ImageSource, stepper?.Handler);
+			}
+			else
+			{
+				platformStepper.ButtonBackground = background.ToPlatform();
+			}
+		}
+
+		internal static void UpdateBackgroundImageSource(this MauiStepper platformStepper, IImageSource? imageSource, IElementHandler? handler)
+		{
+			var provider = handler?.GetRequiredService<IImageSourceServiceProvider>();
+			UpdateBackgroundImageSourceAsync(platformStepper, imageSource, provider).FireAndForget(handler);
+		}
+
+		static async System.Threading.Tasks.Task UpdateBackgroundImageSourceAsync(MauiStepper platformStepper, IImageSource? imageSource, IImageSourceServiceProvider? provider)
+		{
+			if (provider is null || imageSource is null)
+			{
+				platformStepper.ButtonBackground = null;
+				return;
+			}
+
+			var service = provider.GetRequiredImageSourceService(imageSource);
+			var result = await service.GetImageSourceAsync(imageSource);
+			var imageBrush = new ImageBrush { ImageSource = result?.Value };
+			platformStepper.ButtonBackground = imageBrush;
 		}
 	}
 }
