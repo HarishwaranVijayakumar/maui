@@ -1,6 +1,7 @@
 #nullable enable
 Microsoft.Maui.Platform.MauiLayoutAutomationPeer
 Microsoft.Maui.Platform.MauiLayoutAutomationPeer.MauiLayoutAutomationPeer(Microsoft.Maui.Platform.LayoutPanel! owner) -> void
+override Microsoft.Maui.Handlers.GraphicsViewHandler.NeedsContainer.get -> bool
 override Microsoft.Maui.Platform.LayoutPanel.OnCreateAutomationPeer() -> Microsoft.UI.Xaml.Automation.Peers.AutomationPeer!
 override Microsoft.Maui.Platform.MauiLayoutAutomationPeer.GetAutomationControlTypeCore() -> Microsoft.UI.Xaml.Automation.Peers.AutomationControlType
 override Microsoft.Maui.Platform.MauiLayoutAutomationPeer.GetClassNameCore() -> string!

@@ -5,15 +5,25 @@ namespace Microsoft.Maui.Handlers
 {
 	public partial class GraphicsViewHandler : ViewHandler<IGraphicsView, PlatformTouchGraphicsView>
 	{
+		public override bool NeedsContainer =>
+			VirtualView?.Background is ImageSourcePaint ||
+			base.NeedsContainer;
+
 		protected override PlatformTouchGraphicsView CreatePlatformView() => new(Context);
 
 		public static void MapBackground(IGraphicsViewHandler handler, IGraphicsView graphicsView)
 		{
-			if (graphicsView.Background is not null)
+			if (graphicsView.Background is ImageSourcePaint)
+			{
+				handler.UpdateValue(nameof(IViewHandler.ContainerView));
+				handler.ToPlatform().UpdateBackground(graphicsView);
+			}
+			else if (graphicsView.Background is not null)
 			{
 				handler.PlatformView?.UpdateBackground(graphicsView);
-				handler.PlatformView?.Invalidate();
 			}
+
+			handler.PlatformView?.Invalidate();
 		}
 
 		public static void MapDrawable(IGraphicsViewHandler handler, IGraphicsView graphicsView)

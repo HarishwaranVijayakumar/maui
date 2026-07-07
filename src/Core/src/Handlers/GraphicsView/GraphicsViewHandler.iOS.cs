@@ -1,10 +1,15 @@
-﻿using Microsoft.Maui.Platform;
+﻿using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Platform;
 using UIKit;
 
 namespace Microsoft.Maui.Handlers
 {
 	public partial class GraphicsViewHandler : ViewHandler<IGraphicsView, PlatformTouchGraphicsView>
 	{
+		public override bool NeedsContainer =>
+			VirtualView?.Background is ImageSourcePaint ||
+			base.NeedsContainer;
+
 		protected override PlatformTouchGraphicsView CreatePlatformView()
 		{
 			return new PlatformTouchGraphicsView();
@@ -12,10 +17,13 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapBackground(IGraphicsViewHandler handler, IGraphicsView graphicsView)
 		{
-			if (graphicsView.Background is not null)
+			if (graphicsView.Background is ImageSourcePaint)
 			{
-				handler.PlatformView?.InvalidateDrawable();
+				handler.UpdateValue(nameof(IViewHandler.ContainerView));
+				handler.ToPlatform().UpdateBackground(graphicsView);
 			}
+
+			handler.PlatformView?.InvalidateDrawable();
 		}
 
 		public static void MapDrawable(IGraphicsViewHandler handler, IGraphicsView graphicsView)
