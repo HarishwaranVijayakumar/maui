@@ -58,7 +58,8 @@ namespace Microsoft.Maui.Handlers
 		{
 			// If Fill and Background are not null, will use Fill for the Shape background
 			// and Background for the ShapeView background.
-			if (shapeView.Background is not null && shapeView.Fill is not null)
+			// Container needed when: both Fill & Background set (original), OR Background is ImageSourcePaint
+			if ((shapeView.Background is not null && shapeView.Fill is not null) || shapeView.Background is ImageSourcePaint)
 			{
 				handler.UpdateValue(nameof(IViewHandler.ContainerView));
 				handler.ToPlatform().UpdateBackground(shapeView);

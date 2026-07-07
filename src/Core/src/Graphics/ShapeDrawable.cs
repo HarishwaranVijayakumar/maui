@@ -132,7 +132,7 @@ namespace Microsoft.Maui.Graphics
 			// Set Fill
 			var fillPaint = ShapeView.Fill ?? ShapeView.Background;
 
-			if (fillPaint != null)
+			if (fillPaint is not null and not ImageSourcePaint)
 				canvas.SetFillPaint(fillPaint, dirtyRect);
 
 			canvas.FillPath(path);
