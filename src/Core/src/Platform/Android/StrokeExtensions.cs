@@ -188,9 +188,9 @@ namespace Microsoft.Maui.Platform
 			{
 				for (int i = 0; i < layerDrawable.NumberOfLayers; i++)
 				{
-					if (layerDrawable.GetDrawable(i) is MauiDrawable found)
+					if (layerDrawable.GetDrawable(i) is MauiDrawable innerDrawable)
 					{
-						return found;
+						return innerDrawable;
 					}
 				}
 			}

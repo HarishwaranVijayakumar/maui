@@ -505,13 +505,13 @@ namespace Microsoft.Maui.Platform
 			platformView.UpdateBackgroundImageSourceAsync(imageSource, provider).FireAndForget(handler);
 		}
 
-		internal static void UpdateBorderImageBackground(this AView platformView, IImageSource? imageSource, IElementHandler? handler, MauiDrawable mauiDrawable)
+		internal static void UpdateBorderImageBackground(this AView platformView, IImageSource? imageSource, IElementHandler? handler, Drawable strokeDrawable)
 		{
 			var provider = handler?.GetRequiredService<IImageSourceServiceProvider>();
-			UpdateBorderImageBackgroundAsync(platformView, imageSource, provider, mauiDrawable).FireAndForget(handler);
+			UpdateBorderImageBackgroundAsync(platformView, imageSource, provider, strokeDrawable).FireAndForget(handler);
 		}
 
-		static async Task UpdateBorderImageBackgroundAsync(AView platformView, IImageSource? imageSource, IImageSourceServiceProvider? provider, MauiDrawable mauiDrawable)
+		static async Task UpdateBorderImageBackgroundAsync(AView platformView, IImageSource? imageSource, IImageSourceServiceProvider? provider, Drawable strokeDrawable)
 		{
 			if (provider is null || imageSource is null)
 			{
@@ -530,7 +530,7 @@ namespace Microsoft.Maui.Platform
 
 			if (backgroundImageDrawable is not null && platformView.IsAlive())
 			{
-				var layers = new Drawable[] { backgroundImageDrawable, mauiDrawable };
+				var layers = new Drawable[] { backgroundImageDrawable, strokeDrawable };
 				var layerDrawable = new LayerDrawable(layers);
 				platformView.Background = layerDrawable;
 			}
