@@ -505,6 +505,37 @@ namespace Microsoft.Maui.Platform
 			platformView.UpdateBackgroundImageSourceAsync(imageSource, provider).FireAndForget(handler);
 		}
 
+		internal static void UpdateBorderImageBackground(this AView platformView, IImageSource? imageSource, IElementHandler? handler, MauiDrawable mauiDrawable)
+		{
+			var provider = handler?.GetRequiredService<IImageSourceServiceProvider>();
+			UpdateBorderImageBackgroundAsync(platformView, imageSource, provider, mauiDrawable).FireAndForget(handler);
+		}
+
+		static async Task UpdateBorderImageBackgroundAsync(AView platformView, IImageSource? imageSource, IImageSourceServiceProvider? provider, MauiDrawable mauiDrawable)
+		{
+			if (provider is null || imageSource is null)
+			{
+				return;
+			}
+
+			Context? context = platformView.Context;
+			if (context is null)
+			{
+				return;
+			}
+
+			var service = provider.GetRequiredImageSourceService(imageSource);
+			var result = await service.GetDrawableAsync(imageSource, context);
+			Drawable? backgroundImageDrawable = result?.Value;
+
+			if (backgroundImageDrawable is not null && platformView.IsAlive())
+			{
+				var layers = new Drawable[] { backgroundImageDrawable, mauiDrawable };
+				var layerDrawable = new LayerDrawable(layers);
+				platformView.Background = layerDrawable;
+			}
+		}
+
 		internal static void UpdateButtonBackgroundImageSource(this AView platformView, IImageSource? imageSource, IElementHandler? handler, IButtonStroke stroke,
 			Func<global::Android.Content.Res.ColorStateList?>? getDefaultRippleColor = null,
 			Action? beforeSet = null)
