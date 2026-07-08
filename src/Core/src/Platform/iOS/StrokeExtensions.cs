@@ -138,7 +138,7 @@ namespace Microsoft.Maui.Platform
 					if (view.Background is ImageSourcePaint sourcePaint)
 					{
 						mauiCALayer.SetBackground(new SolidPaint(Colors.Transparent));
-						platformView.UpdateBorderImageBackground(sourcePaint.ImageSource, view.Handler, mauiCALayer, border?.Shape);
+						platformView.UpdateBorderImageBackground(sourcePaint.ImageSource, view.Handler, mauiCALayer);
 					}
 					else
 					{

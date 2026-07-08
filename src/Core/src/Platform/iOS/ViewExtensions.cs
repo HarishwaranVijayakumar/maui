@@ -460,7 +460,7 @@ namespace Microsoft.Maui.Platform
 			platformView.UpdateBackgroundImageSourceAsync(imageSource, provider).FireAndForget(handler);
 		}
 
-		internal static void UpdateBorderImageBackground(this UIView platformView, IImageSource? imageSource, IElementHandler? handler, CoreAnimation.CALayer mauiCALayer, IShape? borderShape)
+		internal static void UpdateBorderImageBackground(this UIView platformView, IImageSource? imageSource, IElementHandler? handler, CoreAnimation.CALayer mauiCALayer)
 		{
 			var provider = handler?.GetRequiredService<IImageSourceServiceProvider>();
 			UpdateBorderImageBackgroundAsync(platformView, imageSource, provider, mauiCALayer).FireAndForget(handler);
