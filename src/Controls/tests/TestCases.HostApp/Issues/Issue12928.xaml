@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue12928"
+             Title="ImageBrush Background">
+
+       <Grid RowDefinitions="Auto, *, Auto, *, Auto"
+             Padding="15"
+             RowSpacing="10">
+              <Label x:Name="Control1Label"
+                     Text="Label"
+                     FontAttributes="Bold"
+                     AutomationId="Control1Label"/>
+
+              <ContentView x:Name="Control1Container"
+                           Grid.Row="1"
+                           HeightRequest="150"
+                           AutomationId="Control1Container"/>
+
+              <Label x:Name="Control2Label"
+                     Grid.Row="2"
+                     Text="Button"
+                     FontAttributes="Bold"
+                     AutomationId="Control2Label"/>
+
+              <ContentView x:Name="Control2Container"
+                           Grid.Row="3"
+                           HeightRequest="150"
+                           AutomationId="Control2Container"/>
+
+              <Button Grid.Row="4"
+                      Text="Select Controls"
+                      Clicked="OnOptionsClicked"
+                      AutomationId="OptionsButton"/>
+       </Grid>
+</ContentPage>
