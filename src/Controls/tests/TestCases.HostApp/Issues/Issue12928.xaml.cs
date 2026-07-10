@@ -60,13 +60,29 @@ namespace Maui.Controls.Sample.Issues
 			if (_controlFactories.TryGetValue(control1, out var factory1))
 			{
 				Control1Label.Text = control1;
-				Control1Container.Content = factory1();
+
+				var colorView1 = factory1();
+				colorView1.Background = new SolidColorBrush(Colors.CornflowerBlue);
+				colorView1.AutomationId = "ColorControl1";
+				Control1ColorContainer.Content = colorView1;
+
+				var imageView1 = factory1();
+				imageView1.Background = CreateImageBrush();
+				Control1ImageContainer.Content = imageView1;
 			}
 
 			if (_controlFactories.TryGetValue(control2, out var factory2))
 			{
 				Control2Label.Text = control2;
-				Control2Container.Content = factory2();
+
+				var colorView2 = factory2();
+				colorView2.Background = new SolidColorBrush(Colors.CornflowerBlue);
+				colorView2.AutomationId = "ColorControl2";
+				Control2ColorContainer.Content = colorView2;
+
+				var imageView2 = factory2();
+				imageView2.Background = CreateImageBrush();
+				Control2ImageContainer.Content = imageView2;
 			}
 		}
 
@@ -77,56 +93,44 @@ namespace Maui.Controls.Sample.Issues
 
 		Label CreateLabel() => new Label
 		{
-			Text = "Label with ImageBrush",
+			Text = "Label",
 			TextColor = Colors.Purple,
 			FontSize = 18,
 			HeightRequest = 60,
 			VerticalTextAlignment = TextAlignment.Center,
 			HorizontalTextAlignment = TextAlignment.Center,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Button CreateButton() => new Button
 		{
-			Text = "Button with ImageBrush",
+			Text = "Button",
 			HeightRequest = 60,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl2"
 		};
 
 		Entry CreateEntry() => new Entry
 		{
-			Placeholder = "Entry with ImageBrush",
+			Placeholder = "Entry",
 			HeightRequest = 50,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Editor CreateEditor() => new Editor
 		{
-			Placeholder = "Editor with ImageBrush",
+			Placeholder = "Editor",
 			HeightRequest = 80,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		SearchBar CreateSearchBar() => new SearchBar
 		{
-			Placeholder = "SearchBar with ImageBrush",
+			Placeholder = "SearchBar",
 			HeightRequest = 50,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Picker CreatePicker()
 		{
 			var picker = new Picker
 			{
-				Title = "Picker with ImageBrush",
+				Title = "Picker",
 				HeightRequest = 50,
-				Background = CreateImageBrush(),
-				AutomationId = "ImageBrushControl1"
 			};
 			picker.Items.Add("Option 1");
 			picker.Items.Add("Option 2");
@@ -136,30 +140,22 @@ namespace Maui.Controls.Sample.Issues
 		DatePicker CreateDatePicker() => new DatePicker
 		{
 			HeightRequest = 50,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		TimePicker CreateTimePicker() => new TimePicker
 		{
 			HeightRequest = 50,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Switch CreateSwitch() => new Switch
 		{
 			IsToggled = false,
 			HeightRequest = 60,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Stepper CreateStepper() => new Stepper
 		{
 			HeightRequest = 60,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Slider CreateSlider() => new Slider
@@ -168,32 +164,24 @@ namespace Maui.Controls.Sample.Issues
 			Maximum = 100,
 			Value = 50,
 			HeightRequest = 60,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		ProgressBar CreateProgressBar() => new ProgressBar
 		{
 			Progress = 0.6,
 			HeightRequest = 40,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		CheckBox CreateCheckBox() => new CheckBox
 		{
 			IsChecked = false,
 			HeightRequest = 60,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		RadioButton CreateRadioButton() => new RadioButton
 		{
-			Content = "RadioButton with ImageBrush",
+			Content = "RadioButton",
 			HeightRequest = 60,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Image CreateImage() => new Image
@@ -201,8 +189,6 @@ namespace Maui.Controls.Sample.Issues
 			Source = "dotnet_bot.png",
 			HeightRequest = 100,
 			Aspect = Aspect.AspectFit,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		ImageButton CreateImageButton() => new ImageButton
@@ -210,21 +196,17 @@ namespace Maui.Controls.Sample.Issues
 			Source = "dotnet_bot.png",
 			HeightRequest = 80,
 			WidthRequest = 80,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		ContentView CreateContentView() => new ContentView
 		{
 			HeightRequest = 80,
-			Background = CreateImageBrush(),
 			Content = new Label
 			{
-				Text = "ContentView with ImageBrush",
+				Text = "ContentView",
 				HorizontalOptions = LayoutOptions.Center,
 				VerticalOptions = LayoutOptions.Center
 			},
-			AutomationId = "ImageBrushControl1"
 		};
 
 		Border CreateBorder() => new Border
@@ -233,22 +215,18 @@ namespace Maui.Controls.Sample.Issues
 			StrokeThickness = 2,
 			Stroke = Colors.DarkGray,
 			StrokeShape = new RoundRectangle { CornerRadius = 10 },
-			Background = CreateImageBrush(),
 			Content = new Label
 			{
-				Text = "Border with ImageBrush",
+				Text = "Border",
 				HorizontalOptions = LayoutOptions.Center,
 				VerticalOptions = LayoutOptions.Center
 			},
-			AutomationId = "ImageBrushControl1"
 		};
 
 		CollectionView CreateCollectionView() => new CollectionView
 		{
 			HeightRequest = 120,
-			Background = CreateImageBrush(),
 			ItemsSource = new[] { "Item 1", "Item 2", "Item 3" },
-			AutomationId = "ImageBrushControl1"
 		};
 
 		SwipeView CreateSwipeView()
@@ -256,12 +234,10 @@ namespace Maui.Controls.Sample.Issues
 			var swipeView = new SwipeView
 			{
 				HeightRequest = 80,
-				Background = CreateImageBrush(),
-				AutomationId = "ImageBrushControl1"
 			};
 			swipeView.Content = new Label
 			{
-				Text = "SwipeView with ImageBrush",
+				Text = "SwipeView",
 				HorizontalOptions = LayoutOptions.Center,
 				VerticalOptions = LayoutOptions.Center
 			};
@@ -271,7 +247,6 @@ namespace Maui.Controls.Sample.Issues
 		CarouselView CreateCarouselView() => new CarouselView
 		{
 			HeightRequest = 120,
-			Background = CreateImageBrush(),
 			ItemsSource = new[] { "Slide 1", "Slide 2", "Slide 3" },
 			ItemTemplate = new DataTemplate(() =>
 			{
@@ -283,39 +258,32 @@ namespace Maui.Controls.Sample.Issues
 				label.SetBinding(Label.TextProperty, ".");
 				return label;
 			}),
-			AutomationId = "ImageBrushControl1"
 		};
 
 		StackLayout CreateStackLayout() => new StackLayout
 		{
 			HeightRequest = 120,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1",
 			Children =
 			{
-				new Label { Text = "StackLayout with ImageBrush", HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
+				new Label { Text = "StackLayout", HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
 			}
 		};
 
 		Grid CreateGrid() => new Grid
 		{
 			HeightRequest = 120,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1",
 			Children =
 			{
-				new Label { Text = "Grid with ImageBrush", HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
+				new Label { Text = "Grid", HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
 			}
 		};
 
 		FlexLayout CreateFlexLayout() => new FlexLayout
 		{
 			HeightRequest = 120,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1",
 			Children =
 			{
-				new Label { Text = "FlexLayout with ImageBrush", HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
+				new Label { Text = "FlexLayout", HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center }
 			}
 		};
 
@@ -324,10 +292,8 @@ namespace Maui.Controls.Sample.Issues
 			var layout = new AbsoluteLayout
 			{
 				HeightRequest = 120,
-				Background = CreateImageBrush(),
-				AutomationId = "ImageBrushControl1"
 			};
-			var label = new Label { Text = "AbsoluteLayout with ImageBrush" };
+			var label = new Label { Text = "AbsoluteLayout" };
 			AbsoluteLayout.SetLayoutBounds(label, new Rect(0.5, 0.5, -1, -1));
 			AbsoluteLayout.SetLayoutFlags(label, Microsoft.Maui.Layouts.AbsoluteLayoutFlags.PositionProportional);
 			layout.Children.Add(label);
@@ -337,11 +303,9 @@ namespace Maui.Controls.Sample.Issues
 		ScrollView CreateScrollView() => new ScrollView
 		{
 			HeightRequest = 120,
-			Background = CreateImageBrush(),
-			AutomationId = "ImageBrushControl1",
 			Content = new Label
 			{
-				Text = "ScrollView with ImageBrush",
+				Text = "ScrollView",
 				HorizontalOptions = LayoutOptions.Center,
 				VerticalOptions = LayoutOptions.Center
 			}
