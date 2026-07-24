@@ -109,6 +109,44 @@ namespace Tests
 			}
 		}
 
+		// Regression test for #36574: two composite delegates sharing the same final
+		// target/method must be distinguishable — unsubscribing one must not remove the other.
+		[Fact]
+		public void Accelerometer_ReadingChanged_CompositeUnsubscribeRemovesCorrectDelegate()
+		{
+			var screenA = new CountingSubscriber();
+			var screenB = new CountingSubscriber();
+			var appService = new CountingSubscriber();
+
+			// Build two composites that share the same tail (appService.OnReadingChanged)
+			EventHandler<AccelerometerChangedEventArgs> first = screenA.OnReadingChanged;
+			first += appService.OnReadingChanged;
+
+			EventHandler<AccelerometerChangedEventArgs> second = screenB.OnReadingChanged;
+			second += appService.OnReadingChanged;
+
+			Accelerometer.ReadingChanged += first;
+			Accelerometer.ReadingChanged += second;
+
+			// Unsubscribe 'first' — should remove screenA + appService from first, not second
+			Accelerometer.ReadingChanged -= first;
+
+			try
+			{
+				var implementation = (AccelerometerImplementation)Accelerometer.Default;
+				implementation.OnChanged(new AccelerometerData(1, 2, 3));
+
+				// Only 'second' should remain: screenB fires once, appService fires once
+				Assert.Equal(0, screenA.CallCount);
+				Assert.Equal(1, screenB.CallCount);
+				Assert.Equal(1, appService.CallCount);
+			}
+			finally
+			{
+				Accelerometer.ReadingChanged -= second;
+			}
+		}
+
 		[Fact]
 		public void Accelerometer_Start() =>
 			Assert.Throws<NotImplementedInReferenceAssemblyException>(() => Accelerometer.Stop());

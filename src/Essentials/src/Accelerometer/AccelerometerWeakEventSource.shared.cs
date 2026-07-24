@@ -17,6 +17,7 @@ namespace Microsoft.Maui.Devices.Sensors
 		readonly List<Subscription> subscriptions = new();
 		readonly ConditionalWeakTable<object, HandlerStore> instanceHandlers = new();
 		int nextId;
+		int nextGroupId;
 
 		public void Subscribe(EventHandler<TEventArgs>? handler)
 		{
@@ -27,16 +28,27 @@ namespace Microsoft.Maui.Devices.Sensors
 
 			lock (gate)
 			{
-				var target = handler.Target;
-				if (target is null)
-				{
-					subscriptions.Add(Subscription.CreateStatic(handler));
-					return;
-				}
+				// All handlers from one += call share a group ID so -= can remove
+				// exactly the right subscription even when composites share handlers.
+				var groupId = nextGroupId++;
 
-				var id = nextId++;
-				instanceHandlers.GetOrCreateValue(target).Add(id, handler);
-				subscriptions.Add(Subscription.CreateInstance(target, handler.Method, id));
+				// Decompose multicast delegates so each invocation is tracked individually.
+				var invocationList = handler.GetInvocationList();
+				for (int invocationIndex = 0; invocationIndex < invocationList.Length; invocationIndex++)
+				{
+					var single = invocationList[invocationIndex];
+					var singleHandler = (EventHandler<TEventArgs>)single;
+					var target = singleHandler.Target;
+					if (target is null)
+					{
+						subscriptions.Add(Subscription.CreateStatic(singleHandler, groupId, invocationIndex));
+						continue;
+					}
+
+					var id = nextId++;
+					instanceHandlers.GetOrCreateValue(target).Add(id, singleHandler);
+					subscriptions.Add(Subscription.CreateInstance(target, singleHandler.Method, id, groupId, invocationIndex));
+				}
 			}
 		}
 
@@ -49,28 +61,84 @@ namespace Microsoft.Maui.Devices.Sensors
 
 			lock (gate)
 			{
+				var invocationList = handler.GetInvocationList();
+				if (invocationList.Length == 0)
+				{
+					return;
+				}
+
+				var checkedGroups = new HashSet<int>();
 				for (int i = subscriptions.Count - 1; i >= 0; i--)
 				{
-					var subscription = subscriptions[i];
-
-					if (subscription.IsDead)
+					var sub = subscriptions[i];
+					if (sub.IsDead)
 					{
 						subscriptions.RemoveAt(i);
 						continue;
 					}
 
-					if (subscription.Matches(handler.Target, handler.Method))
+					if (!checkedGroups.Add(sub.GroupId))
 					{
-						if (handler.Target is not null &&
-							instanceHandlers.TryGetValue(handler.Target, out var store))
-						{
-							store.Remove(subscription.Id);
-						}
+						continue;
+					}
 
-						subscriptions.RemoveAt(i);
-						break;
+					if (IsGroupMatch(invocationList, sub.GroupId))
+					{
+						RemoveGroup(sub.GroupId);
+						return;
 					}
 				}
+			}
+		}
+
+		bool IsGroupMatch(Delegate[] invocationList, int groupId)
+		{
+			int count = 0;
+			var matchedIndices = new bool[invocationList.Length];
+
+			for (int i = 0; i < subscriptions.Count; i++)
+			{
+				var subscription = subscriptions[i];
+				if (subscription.GroupId != groupId)
+				{
+					continue;
+				}
+
+				var index = subscription.InvocationIndex;
+				if (index < 0 || index >= invocationList.Length || matchedIndices[index])
+				{
+					return false;
+				}
+
+				if (!subscription.Matches((EventHandler<TEventArgs>)invocationList[index], index))
+				{
+					return false;
+				}
+
+				matchedIndices[index] = true;
+				count++;
+			}
+
+			return count == invocationList.Length;
+		}
+
+		void RemoveGroup(int groupId)
+		{
+			for (int i = subscriptions.Count - 1; i >= 0; i--)
+			{
+				if (subscriptions[i].GroupId != groupId)
+				{
+					continue;
+				}
+
+				var sub = subscriptions[i];
+				if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
+					instanceHandlers.TryGetValue(target, out var store))
+				{
+					store.Remove(sub.Id);
+				}
+
+				subscriptions.RemoveAt(i);
 			}
 		}
 
@@ -148,24 +216,28 @@ namespace Microsoft.Maui.Devices.Sensors
 
 		struct Subscription
 		{
-			Subscription(WeakReference<object>? target, MethodInfo method, int id, EventHandler<TEventArgs>? staticHandler)
+			Subscription(WeakReference<object>? target, MethodInfo method, int id, int groupId, int invocationIndex, EventHandler<TEventArgs>? staticHandler)
 			{
 				Target = target;
 				Method = method;
 				Id = id;
+				GroupId = groupId;
+				InvocationIndex = invocationIndex;
 				StaticHandler = staticHandler;
 			}
 
 			public readonly WeakReference<object>? Target;
 			public readonly MethodInfo Method;
 			public readonly int Id;
+			public readonly int GroupId;
+			public readonly int InvocationIndex;
 			public readonly EventHandler<TEventArgs>? StaticHandler;
 
-			public static Subscription CreateInstance(object target, MethodInfo method, int id) =>
-				new(new WeakReference<object>(target), method, id, null);
+			public static Subscription CreateInstance(object target, MethodInfo method, int id, int groupId, int invocationIndex) =>
+				new(new WeakReference<object>(target), method, id, groupId, invocationIndex, null);
 
-			public static Subscription CreateStatic(EventHandler<TEventArgs> handler) =>
-				new(null, handler.Method, -1, handler);
+			public static Subscription CreateStatic(EventHandler<TEventArgs> handler, int groupId, int invocationIndex) =>
+				new(null, handler.Method, -1, groupId, invocationIndex, handler);
 
 			public bool IsDead => Target != null && !Target.TryGetTarget(out _);
 
@@ -197,6 +269,16 @@ namespace Microsoft.Maui.Devices.Sensors
 				}
 
 				return Target != null && Target.TryGetTarget(out var current) && ReferenceEquals(current, target);
+			}
+
+			public bool Matches(EventHandler<TEventArgs> handler, int invocationIndex)
+			{
+				if (InvocationIndex != invocationIndex)
+				{
+					return false;
+				}
+
+				return Matches(handler.Target, handler.Method);
 			}
 		}
 
@@ -256,6 +338,7 @@ namespace Microsoft.Maui.Devices.Sensors
 		readonly List<Subscription> subscriptions = new();
 		readonly ConditionalWeakTable<object, HandlerStore> instanceHandlers = new();
 		int nextId;
+		int nextGroupId;
 
 		public void Subscribe(EventHandler? handler)
 		{
@@ -266,16 +349,25 @@ namespace Microsoft.Maui.Devices.Sensors
 
 			lock (gate)
 			{
-				var target = handler.Target;
-				if (target is null)
-				{
-					subscriptions.Add(Subscription.CreateStatic(handler));
-					return;
-				}
+				var groupId = nextGroupId++;
 
-				var id = nextId++;
-				instanceHandlers.GetOrCreateValue(target).Add(id, handler);
-				subscriptions.Add(Subscription.CreateInstance(target, handler.Method, id));
+				// Decompose multicast delegates so each invocation is tracked individually.
+				var invocationList = handler.GetInvocationList();
+				for (int invocationIndex = 0; invocationIndex < invocationList.Length; invocationIndex++)
+				{
+					var single = invocationList[invocationIndex];
+					var singleHandler = (EventHandler)single;
+					var target = singleHandler.Target;
+					if (target is null)
+					{
+						subscriptions.Add(Subscription.CreateStatic(singleHandler, groupId, invocationIndex));
+						continue;
+					}
+
+					var id = nextId++;
+					instanceHandlers.GetOrCreateValue(target).Add(id, singleHandler);
+					subscriptions.Add(Subscription.CreateInstance(target, singleHandler.Method, id, groupId, invocationIndex));
+				}
 			}
 		}
 
@@ -288,28 +380,84 @@ namespace Microsoft.Maui.Devices.Sensors
 
 			lock (gate)
 			{
+				var invocationList = handler.GetInvocationList();
+				if (invocationList.Length == 0)
+				{
+					return;
+				}
+
+				var checkedGroups = new HashSet<int>();
 				for (int i = subscriptions.Count - 1; i >= 0; i--)
 				{
-					var subscription = subscriptions[i];
-
-					if (subscription.IsDead)
+					var sub = subscriptions[i];
+					if (sub.IsDead)
 					{
 						subscriptions.RemoveAt(i);
 						continue;
 					}
 
-					if (subscription.Matches(handler.Target, handler.Method))
+					if (!checkedGroups.Add(sub.GroupId))
 					{
-						if (handler.Target is not null &&
-							instanceHandlers.TryGetValue(handler.Target, out var store))
-						{
-							store.Remove(subscription.Id);
-						}
+						continue;
+					}
 
-						subscriptions.RemoveAt(i);
-						break;
+					if (IsGroupMatch(invocationList, sub.GroupId))
+					{
+						RemoveGroup(sub.GroupId);
+						return;
 					}
 				}
+			}
+		}
+
+		bool IsGroupMatch(Delegate[] invocationList, int groupId)
+		{
+			int count = 0;
+			var matchedIndices = new bool[invocationList.Length];
+
+			for (int i = 0; i < subscriptions.Count; i++)
+			{
+				var subscription = subscriptions[i];
+				if (subscription.GroupId != groupId)
+				{
+					continue;
+				}
+
+				var index = subscription.InvocationIndex;
+				if (index < 0 || index >= invocationList.Length || matchedIndices[index])
+				{
+					return false;
+				}
+
+				if (!subscription.Matches((EventHandler)invocationList[index], index))
+				{
+					return false;
+				}
+
+				matchedIndices[index] = true;
+				count++;
+			}
+
+			return count == invocationList.Length;
+		}
+
+		void RemoveGroup(int groupId)
+		{
+			for (int i = subscriptions.Count - 1; i >= 0; i--)
+			{
+				if (subscriptions[i].GroupId != groupId)
+				{
+					continue;
+				}
+
+				var sub = subscriptions[i];
+				if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
+					instanceHandlers.TryGetValue(target, out var store))
+				{
+					store.Remove(sub.Id);
+				}
+
+				subscriptions.RemoveAt(i);
 			}
 		}
 
@@ -387,24 +535,28 @@ namespace Microsoft.Maui.Devices.Sensors
 
 		struct Subscription
 		{
-			Subscription(WeakReference<object>? target, MethodInfo method, int id, EventHandler? staticHandler)
+			Subscription(WeakReference<object>? target, MethodInfo method, int id, int groupId, int invocationIndex, EventHandler? staticHandler)
 			{
 				Target = target;
 				Method = method;
 				Id = id;
+				GroupId = groupId;
+				InvocationIndex = invocationIndex;
 				StaticHandler = staticHandler;
 			}
 
 			public readonly WeakReference<object>? Target;
 			public readonly MethodInfo Method;
 			public readonly int Id;
+			public readonly int GroupId;
+			public readonly int InvocationIndex;
 			public readonly EventHandler? StaticHandler;
 
-			public static Subscription CreateInstance(object target, MethodInfo method, int id) =>
-				new(new WeakReference<object>(target), method, id, null);
+			public static Subscription CreateInstance(object target, MethodInfo method, int id, int groupId, int invocationIndex) =>
+				new(new WeakReference<object>(target), method, id, groupId, invocationIndex, null);
 
-			public static Subscription CreateStatic(EventHandler handler) =>
-				new(null, handler.Method, -1, handler);
+			public static Subscription CreateStatic(EventHandler handler, int groupId, int invocationIndex) =>
+				new(null, handler.Method, -1, groupId, invocationIndex, handler);
 
 			public bool IsDead => Target != null && !Target.TryGetTarget(out _);
 
@@ -436,6 +588,16 @@ namespace Microsoft.Maui.Devices.Sensors
 				}
 
 				return Target != null && Target.TryGetTarget(out var current) && ReferenceEquals(current, target);
+			}
+
+			public bool Matches(EventHandler handler, int invocationIndex)
+			{
+				if (InvocationIndex != invocationIndex)
+				{
+					return false;
+				}
+
+				return Matches(handler.Target, handler.Method);
 			}
 		}
 
