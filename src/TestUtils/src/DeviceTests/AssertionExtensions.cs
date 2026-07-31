@@ -20,9 +20,18 @@ namespace Microsoft.Maui.DeviceTests
 			await Task.Yield();
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
+#if ANDROID
+			Java.Lang.Runtime.GetRuntime()?.Gc();
+			await Task.Yield();
+#endif
 			GC.Collect(2, GCCollectionMode.Forced, true);
 			GC.WaitForPendingFinalizers();
+#if ANDROID
+			Java.Lang.Runtime.GetRuntime()?.Gc();
+			await Task.Yield();
+#endif
 			GC.Collect(2, GCCollectionMode.Forced, true);
+			GC.WaitForPendingFinalizers();
 			await Task.Yield();
 		}
 
