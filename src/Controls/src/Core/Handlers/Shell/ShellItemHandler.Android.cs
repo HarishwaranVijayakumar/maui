@@ -1197,7 +1197,7 @@ namespace Microsoft.Maui.Controls.Handlers
             // Disconnect the handler to unsubscribe from events and clean up resources.
             ((IElementHandler)_handler).DisconnectHandler();
 
-            _wrapperFragment?.Dispose();
+            // FragmentManager owns the fragment lifecycle and may still dispatch OnDestroyView.
             _wrapperFragment = null;
         }
     }
