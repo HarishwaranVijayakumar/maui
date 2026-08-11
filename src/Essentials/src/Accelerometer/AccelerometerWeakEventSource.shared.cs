@@ -17,7 +17,6 @@ namespace Microsoft.Maui.Devices.Sensors
 		readonly List<Subscription> subscriptions = new();
 		readonly ConditionalWeakTable<object, HandlerStore> instanceHandlers = new();
 		int nextId;
-		int nextGroupId;
 
 		public void Subscribe(EventHandler<TEventArgs>? handler)
 		{
@@ -28,26 +27,20 @@ namespace Microsoft.Maui.Devices.Sensors
 
 			lock (gate)
 			{
-				// All handlers from one += call share a group ID so -= can remove
-				// exactly the right subscription even when composites share handlers.
-				var groupId = nextGroupId++;
-
 				// Decompose multicast delegates so each invocation is tracked individually.
-				var invocationList = handler.GetInvocationList();
-				for (int invocationIndex = 0; invocationIndex < invocationList.Length; invocationIndex++)
+				foreach (var single in handler.GetInvocationList())
 				{
-					var single = invocationList[invocationIndex];
 					var singleHandler = (EventHandler<TEventArgs>)single;
 					var target = singleHandler.Target;
 					if (target is null)
 					{
-						subscriptions.Add(Subscription.CreateStatic(singleHandler, groupId, invocationIndex));
+						subscriptions.Add(Subscription.CreateStatic(singleHandler));
 						continue;
 					}
 
 					var id = nextId++;
 					instanceHandlers.GetOrCreateValue(target).Add(id, singleHandler);
-					subscriptions.Add(Subscription.CreateInstance(target, singleHandler.Method, id, groupId, invocationIndex));
+					subscriptions.Add(Subscription.CreateInstance(target, singleHandler.Method, id));
 				}
 			}
 		}
@@ -62,83 +55,46 @@ namespace Microsoft.Maui.Devices.Sensors
 			lock (gate)
 			{
 				var invocationList = handler.GetInvocationList();
-				if (invocationList.Length == 0)
+				int seqLen = invocationList.Length;
+				if (seqLen == 0)
 				{
 					return;
 				}
 
-				var checkedGroups = new HashSet<int>();
-				for (int i = subscriptions.Count - 1; i >= 0; i--)
+				PruneDeadSubscriptions();
+
+				// Find the rightmost contiguous matching sequence, matching Delegate.Remove semantics.
+				for (int start = subscriptions.Count - seqLen; start >= 0; start--)
 				{
-					var sub = subscriptions[i];
-					if (sub.IsDead)
+					bool match = true;
+					for (int j = 0; j < seqLen; j++)
 					{
-						subscriptions.RemoveAt(i);
-						continue;
+						var h = (EventHandler<TEventArgs>)invocationList[j];
+						if (!subscriptions[start + j].Matches(h.Target, h.Method))
+						{
+							match = false;
+							break;
+						}
 					}
 
-					if (!checkedGroups.Add(sub.GroupId))
+					if (match)
 					{
-						continue;
-					}
+						// Remove the matched sequence from back to front to keep indices valid.
+						for (int j = seqLen - 1; j >= 0; j--)
+						{
+							var sub = subscriptions[start + j];
+							if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
+								instanceHandlers.TryGetValue(target, out var store))
+							{
+								store.Remove(sub.Id);
+							}
 
-					if (IsGroupMatch(invocationList, sub.GroupId))
-					{
-						RemoveGroup(sub.GroupId);
+							subscriptions.RemoveAt(start + j);
+						}
+
 						return;
 					}
 				}
-			}
-		}
-
-		bool IsGroupMatch(Delegate[] invocationList, int groupId)
-		{
-			int count = 0;
-			var matchedIndices = new bool[invocationList.Length];
-
-			for (int i = 0; i < subscriptions.Count; i++)
-			{
-				var subscription = subscriptions[i];
-				if (subscription.GroupId != groupId)
-				{
-					continue;
-				}
-
-				var index = subscription.InvocationIndex;
-				if (index < 0 || index >= invocationList.Length || matchedIndices[index])
-				{
-					return false;
-				}
-
-				if (!subscription.Matches((EventHandler<TEventArgs>)invocationList[index], index))
-				{
-					return false;
-				}
-
-				matchedIndices[index] = true;
-				count++;
-			}
-
-			return count == invocationList.Length;
-		}
-
-		void RemoveGroup(int groupId)
-		{
-			for (int i = subscriptions.Count - 1; i >= 0; i--)
-			{
-				if (subscriptions[i].GroupId != groupId)
-				{
-					continue;
-				}
-
-				var sub = subscriptions[i];
-				if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
-					instanceHandlers.TryGetValue(target, out var store))
-				{
-					store.Remove(sub.Id);
-				}
-
-				subscriptions.RemoveAt(i);
 			}
 		}
 
@@ -216,28 +172,24 @@ namespace Microsoft.Maui.Devices.Sensors
 
 		struct Subscription
 		{
-			Subscription(WeakReference<object>? target, MethodInfo method, int id, int groupId, int invocationIndex, EventHandler<TEventArgs>? staticHandler)
+			Subscription(WeakReference<object>? target, MethodInfo method, int id, EventHandler<TEventArgs>? staticHandler)
 			{
 				Target = target;
 				Method = method;
 				Id = id;
-				GroupId = groupId;
-				InvocationIndex = invocationIndex;
 				StaticHandler = staticHandler;
 			}
 
 			public readonly WeakReference<object>? Target;
 			public readonly MethodInfo Method;
 			public readonly int Id;
-			public readonly int GroupId;
-			public readonly int InvocationIndex;
 			public readonly EventHandler<TEventArgs>? StaticHandler;
 
-			public static Subscription CreateInstance(object target, MethodInfo method, int id, int groupId, int invocationIndex) =>
-				new(new WeakReference<object>(target), method, id, groupId, invocationIndex, null);
+			public static Subscription CreateInstance(object target, MethodInfo method, int id) =>
+				new(new WeakReference<object>(target), method, id, null);
 
-			public static Subscription CreateStatic(EventHandler<TEventArgs> handler, int groupId, int invocationIndex) =>
-				new(null, handler.Method, -1, groupId, invocationIndex, handler);
+			public static Subscription CreateStatic(EventHandler<TEventArgs> handler) =>
+				new(null, handler.Method, -1, handler);
 
 			public bool IsDead => Target != null && !Target.TryGetTarget(out _);
 
@@ -269,16 +221,6 @@ namespace Microsoft.Maui.Devices.Sensors
 				}
 
 				return Target != null && Target.TryGetTarget(out var current) && ReferenceEquals(current, target);
-			}
-
-			public bool Matches(EventHandler<TEventArgs> handler, int invocationIndex)
-			{
-				if (InvocationIndex != invocationIndex)
-				{
-					return false;
-				}
-
-				return Matches(handler.Target, handler.Method);
 			}
 		}
 
@@ -338,7 +280,6 @@ namespace Microsoft.Maui.Devices.Sensors
 		readonly List<Subscription> subscriptions = new();
 		readonly ConditionalWeakTable<object, HandlerStore> instanceHandlers = new();
 		int nextId;
-		int nextGroupId;
 
 		public void Subscribe(EventHandler? handler)
 		{
@@ -349,24 +290,20 @@ namespace Microsoft.Maui.Devices.Sensors
 
 			lock (gate)
 			{
-				var groupId = nextGroupId++;
-
 				// Decompose multicast delegates so each invocation is tracked individually.
-				var invocationList = handler.GetInvocationList();
-				for (int invocationIndex = 0; invocationIndex < invocationList.Length; invocationIndex++)
+				foreach (var single in handler.GetInvocationList())
 				{
-					var single = invocationList[invocationIndex];
 					var singleHandler = (EventHandler)single;
 					var target = singleHandler.Target;
 					if (target is null)
 					{
-						subscriptions.Add(Subscription.CreateStatic(singleHandler, groupId, invocationIndex));
+						subscriptions.Add(Subscription.CreateStatic(singleHandler));
 						continue;
 					}
 
 					var id = nextId++;
 					instanceHandlers.GetOrCreateValue(target).Add(id, singleHandler);
-					subscriptions.Add(Subscription.CreateInstance(target, singleHandler.Method, id, groupId, invocationIndex));
+					subscriptions.Add(Subscription.CreateInstance(target, singleHandler.Method, id));
 				}
 			}
 		}
@@ -381,83 +318,46 @@ namespace Microsoft.Maui.Devices.Sensors
 			lock (gate)
 			{
 				var invocationList = handler.GetInvocationList();
-				if (invocationList.Length == 0)
+				int seqLen = invocationList.Length;
+				if (seqLen == 0)
 				{
 					return;
 				}
 
-				var checkedGroups = new HashSet<int>();
-				for (int i = subscriptions.Count - 1; i >= 0; i--)
+				PruneDeadSubscriptions();
+
+				// Find the rightmost contiguous matching sequence, matching Delegate.Remove semantics.
+				for (int start = subscriptions.Count - seqLen; start >= 0; start--)
 				{
-					var sub = subscriptions[i];
-					if (sub.IsDead)
+					bool match = true;
+					for (int j = 0; j < seqLen; j++)
 					{
-						subscriptions.RemoveAt(i);
-						continue;
+						var h = (EventHandler)invocationList[j];
+						if (!subscriptions[start + j].Matches(h.Target, h.Method))
+						{
+							match = false;
+							break;
+						}
 					}
 
-					if (!checkedGroups.Add(sub.GroupId))
+					if (match)
 					{
-						continue;
-					}
+						// Remove the matched sequence from back to front to keep indices valid.
+						for (int j = seqLen - 1; j >= 0; j--)
+						{
+							var sub = subscriptions[start + j];
+							if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
+								instanceHandlers.TryGetValue(target, out var store))
+							{
+								store.Remove(sub.Id);
+							}
 
-					if (IsGroupMatch(invocationList, sub.GroupId))
-					{
-						RemoveGroup(sub.GroupId);
+							subscriptions.RemoveAt(start + j);
+						}
+
 						return;
 					}
 				}
-			}
-		}
-
-		bool IsGroupMatch(Delegate[] invocationList, int groupId)
-		{
-			int count = 0;
-			var matchedIndices = new bool[invocationList.Length];
-
-			for (int i = 0; i < subscriptions.Count; i++)
-			{
-				var subscription = subscriptions[i];
-				if (subscription.GroupId != groupId)
-				{
-					continue;
-				}
-
-				var index = subscription.InvocationIndex;
-				if (index < 0 || index >= invocationList.Length || matchedIndices[index])
-				{
-					return false;
-				}
-
-				if (!subscription.Matches((EventHandler)invocationList[index], index))
-				{
-					return false;
-				}
-
-				matchedIndices[index] = true;
-				count++;
-			}
-
-			return count == invocationList.Length;
-		}
-
-		void RemoveGroup(int groupId)
-		{
-			for (int i = subscriptions.Count - 1; i >= 0; i--)
-			{
-				if (subscriptions[i].GroupId != groupId)
-				{
-					continue;
-				}
-
-				var sub = subscriptions[i];
-				if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
-					instanceHandlers.TryGetValue(target, out var store))
-				{
-					store.Remove(sub.Id);
-				}
-
-				subscriptions.RemoveAt(i);
 			}
 		}
 
@@ -535,28 +435,24 @@ namespace Microsoft.Maui.Devices.Sensors
 
 		struct Subscription
 		{
-			Subscription(WeakReference<object>? target, MethodInfo method, int id, int groupId, int invocationIndex, EventHandler? staticHandler)
+			Subscription(WeakReference<object>? target, MethodInfo method, int id, EventHandler? staticHandler)
 			{
 				Target = target;
 				Method = method;
 				Id = id;
-				GroupId = groupId;
-				InvocationIndex = invocationIndex;
 				StaticHandler = staticHandler;
 			}
 
 			public readonly WeakReference<object>? Target;
 			public readonly MethodInfo Method;
 			public readonly int Id;
-			public readonly int GroupId;
-			public readonly int InvocationIndex;
 			public readonly EventHandler? StaticHandler;
 
-			public static Subscription CreateInstance(object target, MethodInfo method, int id, int groupId, int invocationIndex) =>
-				new(new WeakReference<object>(target), method, id, groupId, invocationIndex, null);
+			public static Subscription CreateInstance(object target, MethodInfo method, int id) =>
+				new(new WeakReference<object>(target), method, id, null);
 
-			public static Subscription CreateStatic(EventHandler handler, int groupId, int invocationIndex) =>
-				new(null, handler.Method, -1, groupId, invocationIndex, handler);
+			public static Subscription CreateStatic(EventHandler handler) =>
+				new(null, handler.Method, -1, handler);
 
 			public bool IsDead => Target != null && !Target.TryGetTarget(out _);
 
@@ -588,16 +484,6 @@ namespace Microsoft.Maui.Devices.Sensors
 				}
 
 				return Target != null && Target.TryGetTarget(out var current) && ReferenceEquals(current, target);
-			}
-
-			public bool Matches(EventHandler handler, int invocationIndex)
-			{
-				if (InvocationIndex != invocationIndex)
-				{
-					return false;
-				}
-
-				return Matches(handler.Target, handler.Method);
 			}
 		}
 
