@@ -28,9 +28,9 @@ namespace Microsoft.Maui.Devices.Sensors
 			lock (gate)
 			{
 				// Decompose multicast delegates so each invocation is tracked individually.
-				foreach (var single in handler.GetInvocationList())
+				foreach (var invocation in handler.GetInvocationList())
 				{
-					var singleHandler = (EventHandler<TEventArgs>)single;
+					var singleHandler = (EventHandler<TEventArgs>)invocation;
 					var target = singleHandler.Target;
 					if (target is null)
 					{
@@ -55,8 +55,8 @@ namespace Microsoft.Maui.Devices.Sensors
 			lock (gate)
 			{
 				var invocationList = handler.GetInvocationList();
-				int seqLen = invocationList.Length;
-				if (seqLen == 0)
+				int sequenceLength = invocationList.Length;
+				if (sequenceLength == 0)
 				{
 					return;
 				}
@@ -64,13 +64,13 @@ namespace Microsoft.Maui.Devices.Sensors
 				PruneDeadSubscriptions();
 
 				// Find the rightmost contiguous matching sequence, matching Delegate.Remove semantics.
-				for (int start = subscriptions.Count - seqLen; start >= 0; start--)
+				for (int start = subscriptions.Count - sequenceLength; start >= 0; start--)
 				{
 					bool match = true;
-					for (int j = 0; j < seqLen; j++)
+					for (int j = 0; j < sequenceLength; j++)
 					{
-						var h = (EventHandler<TEventArgs>)invocationList[j];
-						if (!subscriptions[start + j].Matches(h.Target, h.Method))
+						var singleHandler = (EventHandler<TEventArgs>)invocationList[j];
+						if (!subscriptions[start + j].Matches(singleHandler.Target, singleHandler.Method))
 						{
 							match = false;
 							break;
@@ -80,13 +80,13 @@ namespace Microsoft.Maui.Devices.Sensors
 					if (match)
 					{
 						// Remove the matched sequence from back to front to keep indices valid.
-						for (int j = seqLen - 1; j >= 0; j--)
+						for (int j = sequenceLength - 1; j >= 0; j--)
 						{
-							var sub = subscriptions[start + j];
-							if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
+							var subscription = subscriptions[start + j];
+							if (subscription.Target is not null && subscription.Target.TryGetTarget(out var target) &&
 								instanceHandlers.TryGetValue(target, out var store))
 							{
-								store.Remove(sub.Id);
+								store.Remove(subscription.Id);
 							}
 
 							subscriptions.RemoveAt(start + j);
@@ -291,9 +291,9 @@ namespace Microsoft.Maui.Devices.Sensors
 			lock (gate)
 			{
 				// Decompose multicast delegates so each invocation is tracked individually.
-				foreach (var single in handler.GetInvocationList())
+				foreach (var invocation in handler.GetInvocationList())
 				{
-					var singleHandler = (EventHandler)single;
+					var singleHandler = (EventHandler)invocation;
 					var target = singleHandler.Target;
 					if (target is null)
 					{
@@ -318,8 +318,8 @@ namespace Microsoft.Maui.Devices.Sensors
 			lock (gate)
 			{
 				var invocationList = handler.GetInvocationList();
-				int seqLen = invocationList.Length;
-				if (seqLen == 0)
+				int sequenceLength = invocationList.Length;
+				if (sequenceLength == 0)
 				{
 					return;
 				}
@@ -327,13 +327,13 @@ namespace Microsoft.Maui.Devices.Sensors
 				PruneDeadSubscriptions();
 
 				// Find the rightmost contiguous matching sequence, matching Delegate.Remove semantics.
-				for (int start = subscriptions.Count - seqLen; start >= 0; start--)
+				for (int start = subscriptions.Count - sequenceLength; start >= 0; start--)
 				{
 					bool match = true;
-					for (int j = 0; j < seqLen; j++)
+					for (int j = 0; j < sequenceLength; j++)
 					{
-						var h = (EventHandler)invocationList[j];
-						if (!subscriptions[start + j].Matches(h.Target, h.Method))
+						var singleHandler = (EventHandler)invocationList[j];
+						if (!subscriptions[start + j].Matches(singleHandler.Target, singleHandler.Method))
 						{
 							match = false;
 							break;
@@ -343,13 +343,13 @@ namespace Microsoft.Maui.Devices.Sensors
 					if (match)
 					{
 						// Remove the matched sequence from back to front to keep indices valid.
-						for (int j = seqLen - 1; j >= 0; j--)
+						for (int j = sequenceLength - 1; j >= 0; j--)
 						{
-							var sub = subscriptions[start + j];
-							if (sub.Target is not null && sub.Target.TryGetTarget(out var target) &&
+							var subscription = subscriptions[start + j];
+							if (subscription.Target is not null && subscription.Target.TryGetTarget(out var target) &&
 								instanceHandlers.TryGetValue(target, out var store))
 							{
-								store.Remove(sub.Id);
+								store.Remove(subscription.Id);
 							}
 
 							subscriptions.RemoveAt(start + j);
