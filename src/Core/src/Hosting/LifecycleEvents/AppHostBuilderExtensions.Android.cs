@@ -3,6 +3,7 @@ using AndroidX.Window.Layout;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Hosting;
+using Microsoft.Maui.Platform;
 
 namespace Microsoft.Maui.LifecycleEvents
 {
@@ -19,6 +20,8 @@ namespace Microsoft.Maui.LifecycleEvents
 			android
 				.OnPostCreate((activity, bundle) =>
 				{
+					activity.UpdateDisplayDensity();
+
 					// OnCreate is only ever called once when the activity is initially created
 					activity.GetWindow()?.Created();
 				})
@@ -69,6 +72,8 @@ namespace Microsoft.Maui.LifecycleEvents
 			android
 				.OnConfigurationChanged((activity, newConfig) =>
 				{
+					var displayDensityChanged = activity.UpdateDisplayDensity();
+
 					if (IPlatformApplication.Current is IPlatformApplication platformApplication)
 					{
 						var application = platformApplication.Application;
@@ -88,6 +93,12 @@ namespace Microsoft.Maui.LifecycleEvents
 
 						var frame = activity.GetWindowFrame();
 						mauiWindow.FrameChanged(frame);
+					}
+
+					if (displayDensityChanged)
+					{
+						activity.Window?.DecorView?.RequestLayout();
+						activity.Window?.DecorView?.Invalidate();
 					}
 				});
 		}

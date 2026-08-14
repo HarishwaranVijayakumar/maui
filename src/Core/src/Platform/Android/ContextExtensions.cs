@@ -259,10 +259,22 @@ namespace Microsoft.Maui.Platform
 			if (s_displayDensity != float.MinValue)
 				return;
 
+			UpdateDisplayDensity(context);
+		}
+
+		internal static bool UpdateDisplayDensity(this Context? context)
+		{
 			context ??= global::Android.App.Application.Context;
 
 			using (DisplayMetrics? metrics = context.Resources?.DisplayMetrics)
-				s_displayDensity = metrics != null ? metrics.Density : 1;
+			{
+				var displayDensity = metrics != null ? metrics.Density : 1;
+				if (s_displayDensity == displayDensity)
+					return false;
+
+				s_displayDensity = displayDensity;
+				return true;
+			}
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
