@@ -393,6 +393,11 @@ namespace Microsoft.Maui.Platform
 			else
 				_safeArea = systemAdjustedContentInset;
 
+			if (_safeArea.IsEmptyAtPixelLevel())
+			{
+				_safeArea = SafeAreaPadding.Empty;
+			}
+
 			var oldApplyingSafeAreaAdjustments = _appliesSafeAreaAdjustments;
 			_appliesSafeAreaAdjustments = !IsParentHandlingSafeArea() && RespondsToSafeArea() && !_safeArea.IsEmptyAtPixelLevel();
 
