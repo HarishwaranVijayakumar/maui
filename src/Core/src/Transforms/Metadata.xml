@@ -28,7 +28,8 @@
   <remove-node path="//package[@name='com.bumptech.glide']" />
   <remove-node path="//package[@name='com.microsoft.maui.glide']" />
   <remove-node path="//package[@name='com.microsoft.maui.glide.font']" />
-  <remove-node path="//package[@name='com.microsoft.maui.glide.stream']" />
+  <attr path="//package[@name='com.microsoft.maui.glide.stream']" name="managedName">Microsoft.Maui.Glide.Stream</attr>
+  <remove-node path="//package[@name='com.microsoft.maui.glide.stream']/class" />
   <remove-node path="//package[@name='com.microsoft.maui.glide.fallback']" />
   
 </metadata>

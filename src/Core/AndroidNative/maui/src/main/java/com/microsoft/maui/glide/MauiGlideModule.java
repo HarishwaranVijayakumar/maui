@@ -17,6 +17,8 @@ import com.microsoft.maui.glide.font.FontModel;
 import com.microsoft.maui.glide.font.FontModelLoaderFactory;
 import com.microsoft.maui.glide.font.FontModelResourceDecoder;
 import com.microsoft.maui.glide.stream.GlideInputStreamModelLoaderFactory;
+import com.microsoft.maui.glide.stream.ReplayableStreamModelLoaderFactory;
+import com.microsoft.maui.glide.stream.StreamProvider;
 
 import java.io.InputStream;
 
@@ -30,6 +32,7 @@ public class MauiGlideModule extends AppGlideModule {
         registry.prepend(FontModel.class, FontModel.class, new FontModelLoaderFactory());
         registry.prepend(FontModel.class, Bitmap.class, new FontModelResourceDecoder());
         registry.prepend(InputStream.class, InputStream.class, new GlideInputStreamModelLoaderFactory());
+        registry.prepend(StreamProvider.class, InputStream.class, new ReplayableStreamModelLoaderFactory());
         // add workaround loader for https://github.com/dotnet/maui/issues/6783
         registry.prepend(ImageLoaderCallback.class, ImageLoaderCallback.class, new ImageLoaderCallbackModelLoaderFactory());
     }

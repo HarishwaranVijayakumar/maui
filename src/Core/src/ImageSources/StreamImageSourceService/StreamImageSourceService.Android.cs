@@ -8,6 +8,7 @@ using Android.Graphics.Drawables;
 using Android.Runtime;
 using Android.Widget;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Glide.Stream;
 
 namespace Microsoft.Maui
 {
@@ -21,13 +22,12 @@ namespace Microsoft.Maui
 			{
 				try
 				{
-					byte[] bytes;
-					using (var stream = await streamImageSource.GetStreamAsync(cancellationToken))
-						bytes = await GetStreamBytesAsync(stream, cancellationToken);
-
 					var callback = new ImageLoaderCallback();
 
-					PlatformInterop.LoadImageFromBytes(imageView, bytes, callback);
+					PlatformInterop.LoadImageFromStreamProvider(
+						imageView,
+						new ReplayableStreamProvider(streamImageSource, cancellationToken),
+						callback);
 
 					return await callback.Result;
 				}
@@ -49,13 +49,12 @@ namespace Microsoft.Maui
 			{
 				try
 				{
-					byte[] bytes;
-					using (var stream = await streamImageSource.GetStreamAsync(cancellationToken).ConfigureAwait(false))
-						bytes = await GetStreamBytesAsync(stream, cancellationToken).ConfigureAwait(false);
-
 					var drawableCallback = new ImageLoaderResultCallback();
 
-					PlatformInterop.LoadImageFromBytes(context, bytes, drawableCallback);
+					PlatformInterop.LoadImageFromStreamProvider(
+						context,
+						new ReplayableStreamProvider(streamImageSource, cancellationToken),
+						drawableCallback);
 
 					return await drawableCallback.Result.ConfigureAwait(false);
 				}
@@ -68,12 +67,19 @@ namespace Microsoft.Maui
 
 			return null;
 		}
-
-		static async Task<byte[]> GetStreamBytesAsync(Stream stream, CancellationToken cancellationToken)
+		sealed class ReplayableStreamProvider : Java.Lang.Object, IStreamProvider
 		{
-			using var memoryStream = new MemoryStream();
-			await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
-			return memoryStream.ToArray();
+			readonly IStreamImageSource _streamImageSource;
+			readonly CancellationToken _cancellationToken;
+
+			public ReplayableStreamProvider(IStreamImageSource streamImageSource, CancellationToken cancellationToken)
+			{
+				_streamImageSource = streamImageSource;
+				_cancellationToken = cancellationToken;
+			}
+
+			public Stream Open() =>
+				_streamImageSource.GetStreamAsync(_cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
 		}
 	}
 }
