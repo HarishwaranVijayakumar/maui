@@ -12,6 +12,20 @@ namespace Microsoft.Maui.Controls.Handlers.Items2;
 
 internal static class LayoutFactory2
 {
+	internal static CGRect ConstrainOversizedLayoutQuery(
+		CGRect rect,
+		CGRect visibleRect,
+		UICollectionViewScrollDirection scrollDirection)
+	{
+		var isOversized = scrollDirection == UICollectionViewScrollDirection.Vertical
+			? rect.Height > visibleRect.Height * 2
+			: rect.Width > visibleRect.Width * 2;
+
+		return isOversized && rect.IntersectsWith(visibleRect)
+			? CGRect.Intersect(rect, visibleRect)
+			: rect;
+	}
+
 	public static UICollectionViewLayout CreateList(LinearItemsLayout linearItemsLayout,
 		LayoutGroupingInfo groupingInfo, LayoutHeaderFooterInfo headerFooterInfo)
 		=> linearItemsLayout.Orientation == ItemsLayoutOrientation.Vertical
@@ -585,6 +599,20 @@ internal static class LayoutFactory2
 			_itemsLayout = itemsLayout;
 			_groupingInfo = groupingInfo;
 			_headerFooterInfo = headerFooterInfo;
+		}
+
+		public override UICollectionViewLayoutAttributes[] LayoutAttributesForElementsInRect(CGRect rect)
+		{
+#if MACCATALYST
+			if (CollectionView is { } collectionView)
+#else
+			if (UIDevice.CurrentDevice.UserInterfaceIdiom == UIUserInterfaceIdiom.Pad && CollectionView is { } collectionView)
+#endif
+			{
+				rect = ConstrainOversizedLayoutQuery(rect, collectionView.Bounds, Configuration.ScrollDirection);
+			}
+
+			return base.LayoutAttributesForElementsInRect(rect);
 		}
 
 		public override void FinalizeCollectionViewUpdates()
