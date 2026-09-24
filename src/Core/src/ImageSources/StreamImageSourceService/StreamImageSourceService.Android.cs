@@ -19,22 +19,18 @@ namespace Microsoft.Maui
 
 			if (!streamImageSource.IsEmpty)
 			{
+				Stream? stream = null;
 				try
 				{
-					byte[] bytes;
-					using (var stream = await streamImageSource.GetStreamAsync(cancellationToken))
+					stream = await streamImageSource.GetStreamAsync(cancellationToken);
+					if (stream is null)
 					{
-						if (stream is null)
-						{
-							throw new InvalidOperationException("Unable to load image stream.");
-						}
-
-						bytes = await GetStreamBytesAsync(stream, cancellationToken);
+						throw new InvalidOperationException("Unable to load image stream.");
 					}
 
 					var callback = new ImageLoaderCallback();
 
-					PlatformInterop.LoadImageFromBytes(imageView, bytes, callback);
+					PlatformInterop.LoadImageFromStream(imageView, stream, callback);
 
 					return await callback.Result;
 				}
@@ -42,6 +38,11 @@ namespace Microsoft.Maui
 				{
 					Logger?.LogWarning(ex, "Unable to load image stream.");
 					throw;
+				}
+				finally
+				{
+					stream?.Dispose();
+					GC.KeepAlive(stream);
 				}
 			}
 
@@ -54,22 +55,18 @@ namespace Microsoft.Maui
 
 			if (!streamImageSource.IsEmpty)
 			{
+				Stream? stream = null;
 				try
 				{
-					byte[] bytes;
-					using (var stream = await streamImageSource.GetStreamAsync(cancellationToken).ConfigureAwait(false))
+					stream = await streamImageSource.GetStreamAsync(cancellationToken).ConfigureAwait(false);
+					if (stream is null)
 					{
-						if (stream is null)
-						{
-							throw new InvalidOperationException("Unable to load image stream.");
-						}
-
-						bytes = await GetStreamBytesAsync(stream, cancellationToken).ConfigureAwait(false);
+						throw new InvalidOperationException("Unable to load image stream.");
 					}
 
 					var drawableCallback = new ImageLoaderResultCallback();
 
-					PlatformInterop.LoadImageFromBytes(context, bytes, drawableCallback);
+					PlatformInterop.LoadImageFromStream(context, stream, drawableCallback);
 
 					return await drawableCallback.Result.ConfigureAwait(false);
 				}
@@ -78,16 +75,14 @@ namespace Microsoft.Maui
 					Logger?.LogWarning(ex, "Unable to load image stream.");
 					throw;
 				}
+				finally
+				{
+					stream?.Dispose();
+					GC.KeepAlive(stream);
+				}
 			}
 
 			return null;
-		}
-
-		static async Task<byte[]> GetStreamBytesAsync(Stream stream, CancellationToken cancellationToken)
-		{
-			using var memoryStream = new MemoryStream();
-			await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
-			return memoryStream.ToArray();
 		}
 	}
 }
