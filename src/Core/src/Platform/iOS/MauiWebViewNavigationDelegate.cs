@@ -41,6 +41,8 @@ namespace Microsoft.Maui.Platform
 			if (webView.IsLoading)
 				return;
 
+			UpdateScrollViewBouncing(webView);
+
 			var url = GetCurrentUrl();
 
 			virtualView.Navigated(_lastEvent, url, WebNavigationResult.Success);
@@ -51,6 +53,19 @@ namespace Microsoft.Maui.Platform
 			else
 				platformView.UpdateCanGoBackForward(virtualView);
 		}
+
+		static void UpdateScrollViewBouncing(WKWebView webView)
+		{
+			if (!OperatingSystem.IsMacCatalyst())
+			{
+				return;
+			}
+
+			var scrollView = webView.ScrollView;
+
+			scrollView.AlwaysBounceVertical = scrollView.ContentSize.Height > scrollView.Bounds.Height;
+		}
+
 
 		[Export("webView:didFailNavigation:withError:")]
 		public virtual void DidFailNavigation(WKWebView webView, WKNavigation navigation, NSError error)
