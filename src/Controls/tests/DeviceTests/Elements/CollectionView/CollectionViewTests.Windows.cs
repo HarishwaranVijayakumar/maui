@@ -13,12 +13,227 @@ using Microsoft.Maui.Platform;
 using Microsoft.UI.Xaml;
 using Xunit;
 using static Microsoft.Maui.DeviceTests.AssertHelpers;
+using WListViewBase = Microsoft.UI.Xaml.Controls.ListViewBase;
+using WSelectionMode = Microsoft.UI.Xaml.Controls.ListViewSelectionMode;
 using WSetter = Microsoft.UI.Xaml.Setter;
 
 namespace Microsoft.Maui.DeviceTests
 {
 	public partial class CollectionViewTests
 	{
+		[Theory]
+		[InlineData(SelectionMode.None, WSelectionMode.None, false)]
+		[InlineData(SelectionMode.Single, WSelectionMode.Single, false)]
+		[InlineData(SelectionMode.Multiple, WSelectionMode.Multiple, false)]
+		[InlineData(SelectionMode.None, WSelectionMode.None, true)]
+		[InlineData(SelectionMode.Single, WSelectionMode.Single, true)]
+		[InlineData(SelectionMode.Multiple, WSelectionMode.Multiple, true)]
+		public async Task SelectionModeDoesNotUseWinUIBinding(SelectionMode selectionMode, WSelectionMode platformSelectionMode, bool useGridLayout)
+		{
+			SetupBuilder();
+
+			var collectionView = new CollectionView
+			{
+				SelectionMode = selectionMode,
+				ItemsLayout = useGridLayout
+					? new GridItemsLayout(2, ItemsLayoutOrientation.Vertical)
+					: new LinearItemsLayout(ItemsLayoutOrientation.Vertical)
+			};
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, handler =>
+			{
+				Assert.Equal(platformSelectionMode, handler.PlatformView.SelectionMode);
+				Assert.Null(handler.PlatformView.GetBindingExpression(WListViewBase.SelectionModeProperty));
+				return Task.CompletedTask;
+			});
+		}
+
+		[Fact]
+		public async Task SelectionModeChangesUpdatePlatform()
+		{
+			SetupBuilder();
+
+			var collectionView = new CollectionView();
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, handler =>
+			{
+				collectionView.SelectionMode = SelectionMode.Single;
+				Assert.Equal(WSelectionMode.Single, handler.PlatformView.SelectionMode);
+
+				collectionView.SelectionMode = SelectionMode.Multiple;
+				Assert.Equal(WSelectionMode.Multiple, handler.PlatformView.SelectionMode);
+
+				collectionView.SelectionMode = SelectionMode.None;
+				Assert.Equal(WSelectionMode.None, handler.PlatformView.SelectionMode);
+				return Task.CompletedTask;
+			});
+		}
+
+		[Fact]
+		public async Task PlatformSelectionModeChangesUpdateCollectionView()
+		{
+			SetupBuilder();
+
+			var collectionView = new CollectionView();
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, handler =>
+			{
+				handler.PlatformView.SelectionMode = WSelectionMode.Single;
+				Assert.Equal(SelectionMode.Single, collectionView.SelectionMode);
+
+				handler.PlatformView.SelectionMode = WSelectionMode.Multiple;
+				Assert.Equal(SelectionMode.Multiple, collectionView.SelectionMode);
+
+				handler.PlatformView.SelectionMode = WSelectionMode.None;
+				Assert.Equal(SelectionMode.None, collectionView.SelectionMode);
+
+				handler.PlatformView.SelectionMode = WSelectionMode.Extended;
+				Assert.Equal(SelectionMode.None, collectionView.SelectionMode);
+				return Task.CompletedTask;
+			});
+		}
+
+		[Theory]
+		[InlineData(SelectionMode.Single)]
+		[InlineData(SelectionMode.Multiple)]
+		public async Task InitialSelectionIsPreserved(SelectionMode selectionMode)
+		{
+			SetupBuilder();
+
+			var items = new[] { "First", "Second", "Third" };
+			var collectionView = new CollectionView
+			{
+				ItemsSource = items,
+				SelectionMode = selectionMode,
+				SelectedItem = items[1],
+				SelectedItems = new List<object> { items[0], items[2] }
+			};
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, handler =>
+			{
+				Assert.Equal(items[1], collectionView.SelectedItem);
+				Assert.Equal(new object[] { items[0], items[2] }, collectionView.SelectedItems);
+
+				if (selectionMode == SelectionMode.Single)
+				{
+					Assert.Equal(items[1], handler.PlatformView.SelectedItem);
+				}
+				else
+				{
+					Assert.Equal(new object[] { items[0], items[2] }, handler.PlatformView.SelectedItems.ToArray());
+				}
+
+				return Task.CompletedTask;
+			});
+		}
+
+		[Fact]
+		public async Task SelectionModeChangesPreserveStoredSelection()
+		{
+			SetupBuilder();
+
+			var items = new[] { "First", "Second", "Third" };
+			var collectionView = new CollectionView
+			{
+				ItemsSource = items,
+				SelectedItem = items[1],
+				SelectedItems = new List<object> { items[0], items[2] }
+			};
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, handler =>
+			{
+				int selectionChangedCount = 0;
+				collectionView.SelectionChanged += (_, _) => selectionChangedCount++;
+
+				collectionView.SelectionMode = SelectionMode.Single;
+				Assert.Equal(items[1], handler.PlatformView.SelectedItem);
+
+				collectionView.SelectionMode = SelectionMode.Multiple;
+				Assert.Equal(new object[] { items[0], items[2] }, handler.PlatformView.SelectedItems.ToArray());
+				Assert.Equal(items[1], collectionView.SelectedItem);
+
+				collectionView.SelectionMode = SelectionMode.Single;
+				Assert.Equal(items[1], handler.PlatformView.SelectedItem);
+				Assert.Equal(new object[] { items[0], items[2] }, collectionView.SelectedItems);
+
+				collectionView.SelectionMode = SelectionMode.None;
+				Assert.Empty(handler.PlatformView.SelectedItems);
+				Assert.Equal(items[1], collectionView.SelectedItem);
+				Assert.Equal(new object[] { items[0], items[2] }, collectionView.SelectedItems);
+				Assert.Equal(4, selectionChangedCount);
+				return Task.CompletedTask;
+			});
+		}
+
+		[Theory]
+		[InlineData(SelectionMode.Single)]
+		[InlineData(SelectionMode.Multiple)]
+		public async Task ItemSelectionRemainsSynchronized(SelectionMode selectionMode)
+		{
+			SetupBuilder();
+
+			var items = new[] { "First", "Second" };
+			var collectionView = new CollectionView
+			{
+				ItemsSource = items,
+				SelectionMode = selectionMode
+			};
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, handler =>
+			{
+				if (selectionMode == SelectionMode.Single)
+				{
+					collectionView.SelectedItem = items[0];
+					Assert.Equal(items[0], handler.PlatformView.SelectedItem);
+
+					handler.PlatformView.SelectedItem = items[1];
+					Assert.Equal(items[1], collectionView.SelectedItem);
+				}
+				else
+				{
+					collectionView.UpdateSelectedItems(new List<object> { items[0] });
+					Assert.Equal(new object[] { items[0] }, handler.PlatformView.SelectedItems.ToArray());
+
+					handler.PlatformView.SelectedItems.Clear();
+					handler.PlatformView.SelectedItems.Add(items[1]);
+					Assert.Equal(new object[] { items[1] }, collectionView.SelectedItems);
+				}
+
+				return Task.CompletedTask;
+			});
+		}
+
+		[Fact]
+		public async Task SelectionModeCallbackIsRemovedOnDisconnectAndRestoredOnReconnect()
+		{
+			SetupBuilder();
+
+			var collectionView = new CollectionView { SelectionMode = SelectionMode.Multiple };
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler>(collectionView, handler =>
+			{
+				var platformView = handler.PlatformView;
+				((IElementHandler)handler).DisconnectHandler();
+
+				Assert.Equal(SelectionMode.Multiple, collectionView.SelectionMode);
+
+				platformView.SelectionMode = WSelectionMode.Single;
+				Assert.Equal(SelectionMode.Multiple, collectionView.SelectionMode);
+
+				handler.SetVirtualView(collectionView);
+				var reconnectedPlatformView = handler.PlatformView;
+				Assert.NotSame(platformView, reconnectedPlatformView);
+				Assert.Equal(WSelectionMode.Multiple, reconnectedPlatformView.SelectionMode);
+
+				platformView.SelectionMode = WSelectionMode.None;
+				Assert.Equal(SelectionMode.Multiple, collectionView.SelectionMode);
+
+				reconnectedPlatformView.SelectionMode = WSelectionMode.None;
+				Assert.Equal(SelectionMode.None, collectionView.SelectionMode);
+				return Task.CompletedTask;
+			});
+		}
+
 		[Fact(DisplayName = "CollectionView Disconnects Correctly")]
 		public async Task CollectionViewHandlerDisconnects()
 		{

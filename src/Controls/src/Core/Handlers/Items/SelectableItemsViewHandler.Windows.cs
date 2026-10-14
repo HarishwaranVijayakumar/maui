@@ -1,10 +1,9 @@
 ﻿#nullable disable
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Handlers;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WASDKListViewSelectionMode = Microsoft.UI.Xaml.Controls.ListViewSelectionMode;
 using WASDKSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
@@ -15,6 +14,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 	{
 		bool _ignorePlatformSelectionChange;
 		bool _ignoreVirtualSelectionChange;
+		long _selectionModePropertyChangedToken;
 
 		protected override void ConnectHandler(ListViewBase platformView)
 		{
@@ -29,15 +29,10 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			if (newListViewBase != null)
 			{
-				newListViewBase.SetBinding(ListViewBase.SelectionModeProperty,
-						new Microsoft.UI.Xaml.Data.Binding
-						{
-							Source = ItemsView,
-							Path = new Microsoft.UI.Xaml.PropertyPath("SelectionMode"),
-							Converter = new SelectionModeConvert(),
-							Mode = Microsoft.UI.Xaml.Data.BindingMode.TwoWay
-						});
-
+				// WinUI bindings to managed properties require generated custom-property support under NativeAOT.
+				UpdateValue(nameof(SelectableItemsView.SelectionMode));
+				_selectionModePropertyChangedToken = newListViewBase.RegisterPropertyChangedCallback(
+					ListViewBase.SelectionModeProperty, PlatformSelectionModeChanged);
 				newListViewBase.SelectionChanged += PlatformSelectionChanged;
 			}
 
@@ -51,6 +46,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			if (oldListViewBase != null)
 			{
 				oldListViewBase.SelectionChanged -= PlatformSelectionChanged;
+				oldListViewBase.UnregisterPropertyChangedCallback(
+					ListViewBase.SelectionModeProperty, _selectionModePropertyChangedToken);
 				oldListViewBase.ClearValue(ListViewBase.SelectionModeProperty);
 			}
 
@@ -72,6 +69,51 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public static void MapSelectionMode(SelectableItemsViewHandler<TItemsView> handler, SelectableItemsView itemsView)
 		{
+			if (((IElementHandler)handler).VirtualView is null ||
+				((IElementHandler)handler).PlatformView is not ListViewBase platformView)
+			{
+				return;
+			}
+
+			var previousIgnorePlatformSelectionChange = handler._ignorePlatformSelectionChange;
+			handler._ignorePlatformSelectionChange = true;
+
+			try
+			{
+				// Changing the native mode can clear its selection; do not write that transient state back to MAUI.
+				platformView.SelectionMode = itemsView.SelectionMode switch
+				{
+					SelectionMode.Single => WASDKListViewSelectionMode.Single,
+					SelectionMode.Multiple => WASDKListViewSelectionMode.Multiple,
+					_ => WASDKListViewSelectionMode.None
+				};
+
+				handler.UpdatePlatformSelection();
+			}
+			finally
+			{
+				handler._ignorePlatformSelectionChange = previousIgnorePlatformSelectionChange;
+			}
+		}
+
+		void PlatformSelectionModeChanged(DependencyObject sender, DependencyProperty property)
+		{
+			if (((IElementHandler)this).VirtualView is not SelectableItemsView itemsView)
+			{
+				return;
+			}
+
+			var selectionMode = ((ListViewBase)sender).SelectionMode switch
+			{
+				WASDKListViewSelectionMode.Single => SelectionMode.Single,
+				WASDKListViewSelectionMode.Multiple => SelectionMode.Multiple,
+				_ => SelectionMode.None
+			};
+
+			if (itemsView.SelectionMode != selectionMode)
+			{
+				itemsView.SelectionMode = selectionMode;
+			}
 		}
 
 		void UpdatePlatformSelection()
@@ -232,41 +274,5 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			_ignorePlatformSelectionChange = false;
 		}
 
-		partial class SelectionModeConvert : Microsoft.UI.Xaml.Data.IValueConverter
-		{
-			public object Convert(object value, Type targetType, object parameter, string language)
-			{
-				var formSelectionMode = (SelectionMode)value;
-				switch (formSelectionMode)
-				{
-					case SelectionMode.None:
-						return WASDKListViewSelectionMode.None;
-					case SelectionMode.Single:
-						return WASDKListViewSelectionMode.Single;
-					case SelectionMode.Multiple:
-						return WASDKListViewSelectionMode.Multiple;
-					default:
-						return WASDKListViewSelectionMode.None;
-				}
-			}
-
-			public object ConvertBack(object value, Type targetType, object parameter, string language)
-			{
-				var uwpListViewSelectionMode = (WASDKListViewSelectionMode)value;
-				switch (uwpListViewSelectionMode)
-				{
-					case WASDKListViewSelectionMode.None:
-						return SelectionMode.None;
-					case WASDKListViewSelectionMode.Single:
-						return SelectionMode.Single;
-					case WASDKListViewSelectionMode.Multiple:
-						return SelectionMode.Multiple;
-					case WASDKListViewSelectionMode.Extended:
-						return SelectionMode.None;
-					default:
-						return SelectionMode.None;
-				}
-			}
-		}
 	}
 }
