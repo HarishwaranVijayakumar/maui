@@ -1,3 +1,4 @@
+using System.Drawing;
 using NUnit.Framework;
 using UITest.Appium;
 using UITest.Core;
@@ -32,6 +33,12 @@ public class Issue17836 : _IssuesUITest
 		}
 
 		Assert.That(App.WaitForElement("17836GroupCount").GetText(), Is.EqualTo("Groups: 4"));
-		App.WaitForElement("Group 3 Item 12");
+
+		var collectionViewRect = App.WaitForElement("17836CollectionView").GetRect();
+		var lastItemRect = App.WaitForElement("Group 3 Item 12").GetRect();
+		var visibleItemRect = Rectangle.Intersect(lastItemRect, collectionViewRect);
+
+		Assert.That(visibleItemRect.Height, Is.GreaterThan(0),
+			"The last item in Group 3 should remain visible after Group 4 is loaded.");
 	}
 }
