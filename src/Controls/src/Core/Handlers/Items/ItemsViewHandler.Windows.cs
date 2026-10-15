@@ -112,16 +112,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			if (PlatformView is null || PlatformView.Items is null)
 				return;
 
-			if (VirtualView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepScrollOffset)
+			if (VirtualView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepLastItemInView)
 			{
-				// The scroll position is maintained when new items are added as the default,
-				// so we don't need to watch for data changes
 				PlatformView.Items.VectorChanged -= OnItemsVectorChanged;
+				PlatformView.Items.VectorChanged += OnItemsVectorChanged;
 			}
 			else
 			{
 				PlatformView.Items.VectorChanged -= OnItemsVectorChanged;
-				PlatformView.Items.VectorChanged += OnItemsVectorChanged;
 			}
 		}
 
@@ -135,7 +133,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			var mode = VirtualView.ItemsUpdatingScrollMode;
 
-			if (mode != ItemsUpdatingScrollMode.KeepItemsInView && mode != ItemsUpdatingScrollMode.KeepLastItemInView)
+			if (mode != ItemsUpdatingScrollMode.KeepLastItemInView)
 			{
 				return;
 			}
@@ -144,14 +142,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			bool isGrouped = CollectionViewSource?.IsSourceGrouped == true;
 
 			// Skip the deferred ScrollIntoView on Reset except for CarouselView at Position 0.
-			// For a plain CollectionView, the deferred ScrollIntoView(view[0]) races with a
-			// user-initiated ScrollTo on the page-pop path and can pollute OnScrolled indices.
+			// For a plain CollectionView, the deferred ScrollIntoView races with a user-initiated
+			// ScrollTo on the page-pop path and can pollute OnScrolled indices.
 			// For a grouped CollectionView, the flattened projection backing the view may still
 			// be rebuilding when VectorChanged fires, and indexing into it can raise
 			// E_CHANGED_STATE / COMException (https://github.com/dotnet/maui/issues/17969).
 			// CarouselView does not support grouping, so the not-CarouselView check below also
-			// covers the grouped case. For a CarouselView at a non-zero Position, scrolling to
-			// the first item would override the intended initial position and trigger cascading
+			// covers the grouped case. For a CarouselView at a non-zero Position, scrolling to an
+			// item would override the intended initial position and trigger cascading
 			// PositionChanged / CurrentItemChanged events (https://github.com/dotnet/maui/issues/29529).
 			if (isReset && (ItemsView is not CarouselView carouselView || carouselView.Position != 0))
 			{
@@ -198,12 +196,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			// drain, and so this helper has no implicit dependency on caller state.
 			var mode = VirtualView.ItemsUpdatingScrollMode;
 
-			if (mode == ItemsUpdatingScrollMode.KeepItemsInView)
-			{
-				// Keeps the first item visible when items are inserted
-				ListViewBase.ScrollIntoView(view[0]);
-			}
-			else if (mode == ItemsUpdatingScrollMode.KeepLastItemInView)
+			if (mode == ItemsUpdatingScrollMode.KeepLastItemInView)
 			{
 				// Keeps the last item visible when items are appended
 				ListViewBase.ScrollIntoView(view[itemsCount - 1], ScrollIntoViewAlignment.Leading);
