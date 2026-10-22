@@ -9,14 +9,9 @@ public class Issue39484 : ContentPage
 
 		var swipeItem = new SwipeItem
 		{
-			Text = "ToggleBackground",
-			AutomationId = "ToggleBackground",
+			Text = "Action",
+			AutomationId = "Action",
 			BackgroundColor = Colors.Orange
-		};
-		swipeItem.Invoked += (sender, args) =>
-		{
-			bool clearBackground = swipeItem.BackgroundColor is not null;
-			swipeItem.BackgroundColor = clearBackground ? null : Colors.Orange;
 		};
 
 		var swipeItems = new SwipeItems
@@ -26,6 +21,23 @@ public class Issue39484 : ContentPage
 		};
 		swipeItems.Add(swipeItem);
 
+		var swipeView = new SwipeView
+		{
+			AutomationId = "BackgroundSwipeView",
+			HeightRequest = 100,
+			BackgroundColor = Colors.LightBlue,
+			RightItems = swipeItems,
+			Content = new Label
+			{
+				Text = "Swipe left",
+				AutomationId = "SwipeContent",
+				BackgroundColor = Colors.White,
+				TextColor = Colors.Black,
+				Padding = 20,
+				VerticalTextAlignment = TextAlignment.Center
+			}
+		};
+
 		Content = new VerticalStackLayout
 		{
 			Padding = 20,
@@ -34,24 +46,27 @@ public class Issue39484 : ContentPage
 			{
 				new Label
 				{
-					Text = "Swipe left, then tap the action to clear and restore its background. The action should stay open and orange should disappear when cleared.",
+					Text = "Tap Open, Clear background, then Restore background. The action should stay open and orange should disappear when cleared.",
 					TextColor = Colors.Black
 				},
-				new SwipeView
+				swipeView,
+				new Button
 				{
-					AutomationId = "BackgroundSwipeView",
-					HeightRequest = 100,
-					BackgroundColor = Colors.LightBlue,
-					RightItems = swipeItems,
-					Content = new Label
-					{
-						Text = "Swipe left",
-						AutomationId = "SwipeContent",
-						BackgroundColor = Colors.White,
-						TextColor = Colors.Black,
-						Padding = 20,
-						VerticalTextAlignment = TextAlignment.Center
-					}
+					Text = "Open",
+					AutomationId = "OpenSwipeViewButton",
+					Command = new Command(() => swipeView.Open(OpenSwipeItem.RightItems, false))
+				},
+				new Button
+				{
+					Text = "Clear background",
+					AutomationId = "ClearBackgroundButton",
+					Command = new Command(() => swipeItem.BackgroundColor = null)
+				},
+				new Button
+				{
+					Text = "Restore background",
+					AutomationId = "RestoreBackgroundButton",
+					Command = new Command(() => swipeItem.BackgroundColor = Colors.Orange)
 				}
 			}
 		};

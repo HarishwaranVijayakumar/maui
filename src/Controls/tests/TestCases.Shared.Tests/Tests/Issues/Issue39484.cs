@@ -1,3 +1,4 @@
+#if TEST_FAILS_ON_WINDOWS // Windows SwipeControl does not support programmatic opening (dotnet/maui#14777).
 using NUnit.Framework;
 using UITest.Appium;
 using UITest.Core;
@@ -14,23 +15,25 @@ public class Issue39484 : _IssuesUITest
 	[Category(UITestCategories.SwipeView)]
 	public void SwipeItemBackgroundShouldClearAndRestoreWhileOpen()
 	{
-		App.WaitForElement("SwipeContent");
-		App.SwipeRightToLeft("SwipeContent");
-		App.WaitForElement("ToggleBackground");
+		App.WaitForElement("OpenSwipeViewButton");
+		App.Tap("OpenSwipeViewButton");
+		App.WaitForElement("Action");
 
 		Exception? exception = null;
 		VerifyScreenshotOrSetException(ref exception, "Issue39484_OrangeBackground", retryTimeout: TimeSpan.FromSeconds(2));
 
-		// Invoke the action itself so an outside tap cannot dismiss the native swipe control.
-		App.Tap("ToggleBackground");
-		App.WaitForElement("ToggleBackground");
+		App.WaitForElement("ClearBackgroundButton");
+		App.Tap("ClearBackgroundButton");
+		App.WaitForElement("Action");
 		VerifyScreenshotOrSetException(ref exception, "Issue39484_ClearedBackground", retryTimeout: TimeSpan.FromSeconds(2));
 
-		App.Tap("ToggleBackground");
-		App.WaitForElement("ToggleBackground");
+		App.WaitForElement("RestoreBackgroundButton");
+		App.Tap("RestoreBackgroundButton");
+		App.WaitForElement("Action");
 		VerifyScreenshotOrSetException(ref exception, "Issue39484_RestoredBackground", retryTimeout: TimeSpan.FromSeconds(2));
 
 		if (exception is not null)
 			throw exception;
 	}
 }
+#endif
