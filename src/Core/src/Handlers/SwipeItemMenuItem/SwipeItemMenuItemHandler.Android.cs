@@ -4,6 +4,7 @@ using Android.Content;
 using Android.Graphics.Drawables;
 using Android.Util;
 using Android.Widget;
+using Microsoft.Maui.Graphics;
 using AButton = AndroidX.AppCompat.Widget.AppCompatButton;
 using ATextAlignment = Android.Views.TextAlignment;
 using AView = Android.Views.View;
@@ -12,9 +13,12 @@ namespace Microsoft.Maui.Handlers
 {
 	public partial class SwipeItemMenuItemHandler : ElementHandler<ISwipeItemMenuItem, AView>
 	{
+		Drawable? _defaultBackground;
+
 		protected override void ConnectHandler(AView platformView)
 		{
 			base.ConnectHandler(platformView);
+			_defaultBackground = platformView.Background;
 			platformView.ViewAttachedToWindow += OnViewAttachedToWindow;
 		}
 
@@ -27,6 +31,7 @@ namespace Microsoft.Maui.Handlers
 		{
 			base.DisconnectHandler(platformView);
 			platformView.ViewAttachedToWindow -= OnViewAttachedToWindow;
+			_defaultBackground = null;
 		}
 
 		public static void MapTextColor(ISwipeItemMenuItemHandler handler, ITextStyle view)
@@ -57,9 +62,19 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapBackground(ISwipeItemMenuItemHandler handler, ISwipeItemMenuItem view)
 		{
-			handler.PlatformView.UpdateBackground(handler.VirtualView.Background);
+			var background = view.Background;
 
-			var textColor = handler.VirtualView.GetTextColor()?.ToPlatform();
+			if (handler is SwipeItemMenuItemHandler platformHandler)
+			{
+				if (background.IsNullOrEmpty())
+				{
+					handler.PlatformView.Background = platformHandler._defaultBackground;
+				}
+			}
+
+			handler.PlatformView.UpdateBackground(background);
+
+			var textColor = view.GetTextColor()?.ToPlatform();
 
 			if (handler.PlatformView is TextView textView)
 			{
