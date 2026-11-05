@@ -1,4 +1,5 @@
 ﻿#nullable disable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Maui.Controls.Platform;
@@ -12,6 +13,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 {
 	public partial class SelectableItemsViewHandler<TItemsView> : StructuredItemsViewHandler<TItemsView> where TItemsView : SelectableItemsView
 	{
+		static readonly SelectionModeConvert s_selectionModeConverter = new();
 		bool _ignorePlatformSelectionChange;
 		bool _ignoreVirtualSelectionChange;
 		long _selectionModePropertyChangedToken;
@@ -81,12 +83,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			try
 			{
 				// Changing the native mode can clear its selection; do not write that transient state back to MAUI.
-				platformView.SelectionMode = itemsView.SelectionMode switch
-				{
-					SelectionMode.Single => WASDKListViewSelectionMode.Single,
-					SelectionMode.Multiple => WASDKListViewSelectionMode.Multiple,
-					_ => WASDKListViewSelectionMode.None
-				};
+				platformView.SelectionMode = (WASDKListViewSelectionMode)s_selectionModeConverter.Convert(
+					itemsView.SelectionMode, typeof(WASDKListViewSelectionMode), null, null);
 
 				handler.UpdatePlatformSelection();
 			}
@@ -103,12 +101,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				return;
 			}
 
-			var selectionMode = ((ListViewBase)sender).SelectionMode switch
-			{
-				WASDKListViewSelectionMode.Single => SelectionMode.Single,
-				WASDKListViewSelectionMode.Multiple => SelectionMode.Multiple,
-				_ => SelectionMode.None
-			};
+			var selectionMode = (SelectionMode)s_selectionModeConverter.ConvertBack(
+				((ListViewBase)sender).SelectionMode, typeof(SelectionMode), null, null);
 
 			if (itemsView.SelectionMode != selectionMode)
 			{
@@ -286,5 +280,41 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			_ignorePlatformSelectionChange = false;
 		}
 
+		partial class SelectionModeConvert : Microsoft.UI.Xaml.Data.IValueConverter
+		{
+			public object Convert(object value, Type targetType, object parameter, string language)
+			{
+				var formSelectionMode = (SelectionMode)value;
+				switch (formSelectionMode)
+				{
+					case SelectionMode.None:
+						return WASDKListViewSelectionMode.None;
+					case SelectionMode.Single:
+						return WASDKListViewSelectionMode.Single;
+					case SelectionMode.Multiple:
+						return WASDKListViewSelectionMode.Multiple;
+					default:
+						return WASDKListViewSelectionMode.None;
+				}
+			}
+
+			public object ConvertBack(object value, Type targetType, object parameter, string language)
+			{
+				var uwpListViewSelectionMode = (WASDKListViewSelectionMode)value;
+				switch (uwpListViewSelectionMode)
+				{
+					case WASDKListViewSelectionMode.None:
+						return SelectionMode.None;
+					case WASDKListViewSelectionMode.Single:
+						return SelectionMode.Single;
+					case WASDKListViewSelectionMode.Multiple:
+						return SelectionMode.Multiple;
+					case WASDKListViewSelectionMode.Extended:
+						return SelectionMode.None;
+					default:
+						return SelectionMode.None;
+				}
+			}
+		}
 	}
 }

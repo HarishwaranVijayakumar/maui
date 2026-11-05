@@ -34,7 +34,9 @@ public partial class CollectionViewHandler2
 }
 public partial class CollectionViewHandler2 : ReorderableItemsViewHandler2<ReorderableItemsView>
 {
+	static readonly SelectionModeConverter s_selectionModeConverter = new();
 	bool _ignorePlatformSelectionChange;
+	long _selectionModePropertyChangedToken;
 	bool _selectionDirty;
 	bool _selectionUpdateQueued;
 	bool _platformSelectionUpdateQueued;
@@ -86,7 +88,7 @@ public partial class CollectionViewHandler2 : ReorderableItemsViewHandler2<Reord
 		handler.UpdatePlatformSelection();
 	}
 
-	/// <summary>
+	/// <summary>mauiwindouiwindow
 	/// Left margin applied to item content when in multi-select mode to avoid overlapping
 	/// the WinUI ItemContainer checkbox. Matches WinUI's ListViewItemMultiselectCheckBoxMargin.
 	/// </summary>
@@ -95,7 +97,25 @@ public partial class CollectionViewHandler2 : ReorderableItemsViewHandler2<Reord
 
 	public static void MapSelectionMode(CollectionViewHandler2 handler, SelectableItemsView itemsView)
 	{
-		handler.UpdatePlatformSelection();
+		if (((IElementHandler)handler).VirtualView is null ||
+			((IElementHandler)handler).PlatformView is not WItemsView platformView)
+		{
+			return;
+		}
+
+		var previousIgnorePlatformSelectionChange = handler._ignorePlatformSelectionChange;
+		handler._ignorePlatformSelectionChange = true;
+		try
+		{
+			// A mode change can clear the native selection; do not write that transient state back to MAUI.
+			platformView.SelectionMode = (ItemsViewSelectionMode)s_selectionModeConverter.Convert(itemsView.SelectionMode, typeof(ItemsViewSelectionMode), null!, null!);
+			handler.UpdatePlatformSelection();
+		}
+		finally
+		{
+			handler._ignorePlatformSelectionChange = previousIgnorePlatformSelectionChange;
+		}
+
 		handler.UpdateMultiSelectContentMargin();
 		// The margin change affects item sizes, so invalidate the MeasureFirstItem cache
 		// to avoid stale sizes being applied to items realized after the mode switch.
@@ -166,14 +186,8 @@ public partial class CollectionViewHandler2 : ReorderableItemsViewHandler2<Reord
 		if (PlatformView is not null)
 		{
 			PlatformView.IsTabStop = false;
-			PlatformView.SetBinding(WItemsView.SelectionModeProperty,
-					new UI.Xaml.Data.Binding
-					{
-						Source = ItemsView,
-						Path = new UI.Xaml.PropertyPath("SelectionMode"),
-						Converter = new SelectionModeConverter(),
-						Mode = UI.Xaml.Data.BindingMode.TwoWay
-					});
+			UpdateValue(nameof(SelectableItemsView.SelectionMode));
+			_selectionModePropertyChangedToken = platformView.RegisterPropertyChangedCallback(WItemsView.SelectionModeProperty, PlatformSelectionModeChanged);
 
 			PlatformView.SelectionChanged += PlatformSelectionChanged;
 			PlatformView.Loaded += OnPlatformViewLoaded;
@@ -182,6 +196,20 @@ public partial class CollectionViewHandler2 : ReorderableItemsViewHandler2<Reord
 			{
 				mauiItemsViewConnect.ReattachAccessibilityHelper();
 			}
+		}
+	}
+
+	void PlatformSelectionModeChanged(UI.Xaml.DependencyObject sender, UI.Xaml.DependencyProperty property)
+	{
+		if (!ReferenceEquals(((IElementHandler)this).PlatformView, sender) || ((IElementHandler)this).VirtualView is not SelectableItemsView itemsView)
+		{
+			return;
+		}
+
+		var selectionMode = (SelectionMode)s_selectionModeConverter.ConvertBack(((WItemsView)sender).SelectionMode, typeof(SelectionMode), null!, null!);
+		if (itemsView.SelectionMode != selectionMode)
+		{
+			itemsView.SelectionMode = selectionMode;
 		}
 	}
 
@@ -232,6 +260,7 @@ public partial class CollectionViewHandler2 : ReorderableItemsViewHandler2<Reord
 
 		platformView.SelectionChanged -= PlatformSelectionChanged;
 		platformView.Loaded -= OnPlatformViewLoaded;
+		platformView.UnregisterPropertyChangedCallback(WItemsView.SelectionModeProperty, _selectionModePropertyChangedToken);
 		platformView.ClearValue(WItemsView.SelectionModeProperty);
 		if (platformView is MauiItemsView mauiItemsView)
 		{

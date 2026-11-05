@@ -23,6 +23,103 @@ namespace Microsoft.Maui.DeviceTests
 	public partial class CollectionViewTests
 	{
 		[Theory]
+		[InlineData(SelectionMode.None, UI.Xaml.Controls.ItemsViewSelectionMode.None)]
+		[InlineData(SelectionMode.Single, UI.Xaml.Controls.ItemsViewSelectionMode.Single)]
+		[InlineData(SelectionMode.Multiple, UI.Xaml.Controls.ItemsViewSelectionMode.Multiple)]
+		public async Task CollectionView2SelectionModeDoesNotUseWinUIBinding(
+			SelectionMode selectionMode, UI.Xaml.Controls.ItemsViewSelectionMode platformSelectionMode)
+		{
+			SetupBuilderCollectionView2();
+			var collectionView = new CollectionView { SelectionMode = selectionMode };
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler2>(collectionView, handler =>
+			{
+				Assert.Equal(platformSelectionMode, handler.PlatformView.SelectionMode);
+				Assert.Null(handler.PlatformView.GetBindingExpression(UI.Xaml.Controls.ItemsView.SelectionModeProperty));
+				return Task.CompletedTask;
+			});
+		}
+
+		[Fact]
+		public async Task CollectionView2SelectionModeSynchronizesBothWays()
+		{
+			SetupBuilderCollectionView2();
+			var collectionView = new CollectionView();
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler2>(collectionView, handler =>
+			{
+				foreach (var mode in new[] { SelectionMode.Single, SelectionMode.Multiple, SelectionMode.None })
+				{
+					collectionView.SelectionMode = mode;
+					var expected = mode switch
+					{
+						SelectionMode.Single => UI.Xaml.Controls.ItemsViewSelectionMode.Single,
+						SelectionMode.Multiple => UI.Xaml.Controls.ItemsViewSelectionMode.Multiple,
+						_ => UI.Xaml.Controls.ItemsViewSelectionMode.None
+					};
+					Assert.Equal(expected, handler.PlatformView.SelectionMode);
+				}
+
+				handler.PlatformView.SelectionMode = UI.Xaml.Controls.ItemsViewSelectionMode.Single;
+				Assert.Equal(SelectionMode.Single, collectionView.SelectionMode);
+				handler.PlatformView.SelectionMode = UI.Xaml.Controls.ItemsViewSelectionMode.Multiple;
+				Assert.Equal(SelectionMode.Multiple, collectionView.SelectionMode);
+				handler.PlatformView.SelectionMode = UI.Xaml.Controls.ItemsViewSelectionMode.None;
+				Assert.Equal(SelectionMode.None, collectionView.SelectionMode);
+				return Task.CompletedTask;
+			});
+		}
+
+		[Fact]
+		public async Task CollectionView2SelectionModeChangesPreserveStoredSelection()
+		{
+			SetupBuilderCollectionView2();
+			var items = new[] { "First", "Second", "Third" };
+			var collectionView = new CollectionView
+			{
+				ItemsSource = items,
+				SelectionMode = SelectionMode.Single,
+				SelectedItem = items[1],
+				SelectedItems = new List<object> { items[0], items[2] },
+				HeightRequest = 300,
+				WidthRequest = 300
+			};
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler2>(collectionView, async handler =>
+			{
+				await AssertEventually(() => handler.PlatformView.SelectedItems.Count == 1);
+
+				collectionView.SelectionMode = SelectionMode.Multiple;
+				await AssertEventually(() => handler.PlatformView.SelectedItems.Count == 2);
+				Assert.Equal(items[1], collectionView.SelectedItem);
+				Assert.Equal(new object[] { items[0], items[2] }, collectionView.SelectedItems);
+
+				collectionView.SelectionMode = SelectionMode.Single;
+				await AssertEventually(() => handler.PlatformView.SelectedItems.Count == 1);
+				Assert.Equal(items[1], collectionView.SelectedItem);
+				Assert.Equal(new object[] { items[0], items[2] }, collectionView.SelectedItems);
+			});
+		}
+
+		[Fact]
+		public async Task CollectionView2SelectionModeCallbackIsRemovedOnDisconnect()
+		{
+			SetupBuilderCollectionView2();
+			var collectionView = new CollectionView { SelectionMode = SelectionMode.Multiple };
+
+			await CreateHandlerAndAddToWindow<CollectionViewHandler2>(collectionView, handler =>
+			{
+				var platformView = handler.PlatformView;
+				((IElementHandler)handler).DisconnectHandler();
+				Assert.Equal(SelectionMode.Multiple, collectionView.SelectionMode);
+
+				platformView.SelectionMode = UI.Xaml.Controls.ItemsViewSelectionMode.Single;
+				Assert.Equal(SelectionMode.Multiple, collectionView.SelectionMode);
+				return Task.CompletedTask;
+			});
+		}
+
+		[Theory]
 		[InlineData(false)]
 		[InlineData(true)]
 		public async Task LegacyGridLayoutReplacementUpdatesPanelAndSubscription(bool useItemTemplate)
