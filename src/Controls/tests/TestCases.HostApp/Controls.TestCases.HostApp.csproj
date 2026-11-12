@@ -79,6 +79,7 @@
 
   <ItemGroup>
     <Compile Include="..\CustomAttributes\*.cs" />
+    <Compile Include="..\..\samples\Controls.Sample.Sandbox\BlendModeDrawables.cs" Link="Issues\Issue14945Drawable.cs" />
     <Using Include="Microsoft.Maui.Controls.CustomAttributes" />
   </ItemGroup>
 
