@@ -69,7 +69,7 @@ namespace Microsoft.Maui.Graphics.Platform
 		private void UserControl_Unloaded(object sender, RoutedEventArgs e)
 		{
 			// Explicitly remove references to allow the Win2D controls to get garbage collected
-			if (_canvasControl != null && !_canvasControl.IsLoaded)
+			if (_canvasControl is not null && !_canvasControl.IsLoaded)
 			{
 				_canvasControl.RemoveFromVisualTree();
 				_canvasControl = null;
@@ -78,8 +78,10 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		private void OnDraw(CanvasControl sender, CanvasDrawEventArgs args)
 		{
-			if (_drawable == null)
+			if (_drawable is null)
+			{
 				return;
+			}
 
 			var actualWidth = (float)sender.ActualWidth;
 			var actualHeight = (float)sender.ActualHeight;
@@ -139,8 +141,14 @@ namespace Microsoft.Maui.Graphics.Platform
 				}
 				finally
 				{
-					_canvas.Session = null;
-					PlatformGraphicsService.ThreadLocalCreator = null;
+					try
+					{
+						_canvas.Session = null;
+					}
+					finally
+					{
+						PlatformGraphicsService.ThreadLocalCreator = null;
+					}
 				}
 			}
 		}

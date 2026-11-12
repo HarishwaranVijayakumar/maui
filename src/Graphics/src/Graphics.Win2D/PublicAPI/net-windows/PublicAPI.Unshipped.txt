@@ -1,1 +1,2 @@
 #nullable enable
+override Microsoft.Maui.Graphics.Win2D.W2DCanvas.Dispose() -> void

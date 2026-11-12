@@ -30,6 +30,7 @@ namespace Microsoft.Maui.Graphics.Platform
 		: AbstractCanvas<PlatformCanvasState>, IBlurrableCanvas
 	{
 		private CanvasDrawingSession _session;
+		private PlatformBlendRenderer _blendRenderer;
 		private CanvasRenderTarget _patternContext;
 		private CanvasRenderTarget _effectContext;
 		private ShadowEffect _shadowEffect;
@@ -65,7 +66,46 @@ namespace Microsoft.Maui.Graphics.Platform
 		public CanvasDrawingSession Session
 		{
 			get => _session;
-			set => _session = value;
+			set
+			{
+				if (_session == value)
+				{
+					return;
+				}
+
+				try
+				{
+					if (_blendRenderer is not null)
+					{
+						try
+						{
+							CurrentState?.SuspendClipLayers();
+						}
+						finally
+						{
+							_blendRenderer.Dispose();
+						}
+					}
+				}
+				finally
+				{
+					_blendRenderer = null;
+					_session = value;
+				}
+			}
+		}
+
+		/// <inheritdoc/>
+		public override void Dispose()
+		{
+			try
+			{
+				Session = null;
+			}
+			finally
+			{
+				base.Dispose();
+			}
 		}
 
 		public global::Windows.Foundation.Size CanvasSize
@@ -137,13 +177,14 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		public override BlendMode BlendMode
 		{
-			set { }
+			set => CurrentState.BlendMode = value;
 		}
 
 		public override void FillPath(PathF path, WindingMode windingMode)
 		{
 			var geometry = GetPath(path, windingMode == WindingMode.NonZero ? CanvasFilledRegionDetermination.Winding : CanvasFilledRegionDetermination.Alternate);
-			Draw(s => s.FillGeometry(geometry, CurrentState.PlatformFillBrush));
+			Draw(s => s.FillGeometry(geometry, CurrentState.PlatformFillBrush),
+				(s, brush) => s.FillGeometry(geometry, brush));
 		}
 
 
@@ -205,17 +246,20 @@ namespace Microsoft.Maui.Graphics.Platform
 			builder.EndFigure(CanvasFigureLoop.Closed);
 			var geometry = CanvasGeometry.CreatePath(builder);
 
-			Draw(ctx => ctx.FillGeometry(geometry, CurrentState.PlatformFillBrush));
+			Draw(ctx => ctx.FillGeometry(geometry, CurrentState.PlatformFillBrush),
+				(ctx, brush) => ctx.FillGeometry(geometry, brush));
 		}
 
 		public override void FillRectangle(float x, float y, float width, float height)
 		{
-			Draw(s => s.FillRectangle(x, y, width, height, CurrentState.PlatformFillBrush));
+			Draw(s => s.FillRectangle(x, y, width, height, CurrentState.PlatformFillBrush),
+				(s, brush) => s.FillRectangle(x, y, width, height, brush));
 		}
 
 		public override void FillRoundedRectangle(float x, float y, float width, float height, float cornerRadius)
 		{
-			Draw(s => s.FillRoundedRectangle(x, y, width, height, cornerRadius, cornerRadius, CurrentState.PlatformFillBrush));
+			Draw(s => s.FillRoundedRectangle(x, y, width, height, cornerRadius, cornerRadius, CurrentState.PlatformFillBrush),
+				(s, brush) => s.FillRoundedRectangle(x, y, width, height, cornerRadius, cornerRadius, brush));
 		}
 
 		public override void FillEllipse(float x, float y, float width, float height)
@@ -245,7 +289,8 @@ namespace Microsoft.Maui.Graphics.Platform
 				radiusY = 0;
 			}
 
-			Draw(s => s.FillEllipse(_point1, radiusX, radiusY, CurrentState.PlatformFillBrush));
+			Draw(s => s.FillEllipse(_point1, radiusX, radiusY, CurrentState.PlatformFillBrush),
+				(s, brush) => s.FillEllipse(_point1, radiusX, radiusY, brush));
 		}
 
 		public override void DrawString(string value, float x, float y, HorizontalAlignment horizontalAlignment)
@@ -290,7 +335,8 @@ namespace Microsoft.Maui.Graphics.Platform
 					(float)_rect.Width,
 					(float)_rect.Height);
 
-				Draw(ctx => ctx.DrawTextLayout(textLayout, _point1, CurrentState.PlatformFontBrush));
+				Draw(ctx => ctx.DrawTextLayout(textLayout, _point1, CurrentState.PlatformFontBrush),
+					(ctx, brush) => ctx.DrawTextLayout(textLayout, _point1, brush));
 
 #if DEBUG
 
@@ -361,7 +407,8 @@ namespace Microsoft.Maui.Graphics.Platform
 			_point1.X = x;
 			_point1.Y = y;
 
-			Draw(ctx => ctx.DrawTextLayout(textLayout, _point1, CurrentState.PlatformFontBrush));
+			Draw(ctx => ctx.DrawTextLayout(textLayout, _point1, CurrentState.PlatformFontBrush),
+				(ctx, brush) => ctx.DrawTextLayout(textLayout, _point1, brush));
 		}
 
 		public override void DrawText(IAttributedText value, float x, float y, float width, float height)
@@ -376,7 +423,7 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		public override void SetFillPaint(Paint paint, RectF rectangle)
 		{
-			if (paint == null)
+			if (paint is null)
 			{
 				CurrentState.FillColor = Colors.White;
 				return;
@@ -409,7 +456,7 @@ namespace Microsoft.Maui.Graphics.Platform
 			if (paint is PatternPaint patternPaint)
 			{
 				var pattern = patternPaint.Pattern;
-				if (pattern == null)
+				if (pattern is null)
 				{
 					CurrentState.FillColor = Colors.White;
 					return;
@@ -418,7 +465,7 @@ namespace Microsoft.Maui.Graphics.Platform
 				if (_bitmapPatternFills)
 				{
 					var bitmap = CreatePatternBitmap(pattern);
-					if (bitmap != null)
+					if (bitmap is not null)
 					{
 						var bitmapBrush = new CanvasImageBrush(_session, bitmap)
 						{
@@ -435,7 +482,7 @@ namespace Microsoft.Maui.Graphics.Platform
 				else
 				{
 					var commandList = CreatePatternCommandList(pattern);
-					if (commandList != null)
+					if (commandList is not null)
 					{
 						var imageBrush = new CanvasImageBrush(_session, commandList)
 						{
@@ -498,8 +545,12 @@ namespace Microsoft.Maui.Graphics.Platform
 			var commandList = new CanvasCommandList(_session);
 			using (var patternSession = commandList.CreateDrawingSession())
 			{
-				var canvas = new PlatformCanvas { Session = patternSession };
-				pattern?.Draw(canvas);
+				using var canvas = new PlatformCanvas
+				{
+					Session = patternSession,
+					CanvasSize = new global::Windows.Foundation.Size(pattern.Width, pattern.Height)
+				};
+				pattern.Draw(canvas);
 			}
 
 			return commandList;
@@ -509,12 +560,16 @@ namespace Microsoft.Maui.Graphics.Platform
 		private CanvasBitmap CreatePatternBitmap(IPattern pattern)
 		{
 			var context = GetOrCreatePatternContext(new global::Windows.Foundation.Size(pattern.Width, pattern.Height));
-			if (context != null)
+			if (context is not null)
 			{
 				using (var imageSession = context.CreateDrawingSession())
 				{
 					imageSession.Clear(WColors.Transparent);
-					var canvas = new PlatformCanvas { Session = imageSession };
+					using var canvas = new PlatformCanvas
+					{
+						Session = imageSession,
+						CanvasSize = new global::Windows.Foundation.Size(pattern.Width, pattern.Height)
+					};
 					pattern.Draw(canvas);
 				}
 
@@ -536,7 +591,8 @@ namespace Microsoft.Maui.Graphics.Platform
 				After:
 								Draw(s => s.DrawImage(platformImage.PlatformImage, _rect, global::Windows.Foundation.Rect.Empty, CurrentState.Alpha, CanvasImageInterpolation.Linear));
 				*/
-				Draw(s => s.DrawImage(platformImage.PlatformRepresentation, _rect, WRect.Empty, CurrentState.Alpha, CanvasImageInterpolation.Linear));
+				Draw(s => s.DrawImage(platformImage.PlatformRepresentation, _rect, WRect.Empty, CurrentState.Alpha, CanvasImageInterpolation.Linear),
+					(s, brush) => s.FillRectangle(_rect, brush));
 			}
 		}
 
@@ -547,7 +603,8 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		protected override void PlatformDrawLine(float x1, float y1, float x2, float y2)
 		{
-			Draw(s => s.DrawLine(x1, y1, x2, y2, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
+			Draw(s => s.DrawLine(x1, y1, x2, y2, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle),
+				(s, brush) => s.DrawLine(x1, y1, x2, y2, brush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
 		}
 
 		protected override void PlatformDrawArc(float x, float y, float width, float height, float startAngle, float endAngle, bool clockwise, bool closed)
@@ -593,7 +650,8 @@ namespace Microsoft.Maui.Graphics.Platform
 			builder.EndFigure(CanvasFigureLoop.Open);
 			var geometry = CanvasGeometry.CreatePath(builder);
 
-			Draw(ctx => ctx.DrawGeometry(geometry, CurrentState.PlatformStrokeBrush, strokeWidth, CurrentState.PlatformStrokeStyle));
+			Draw(ctx => ctx.DrawGeometry(geometry, CurrentState.PlatformStrokeBrush, strokeWidth, CurrentState.PlatformStrokeStyle),
+				(ctx, brush) => ctx.DrawGeometry(geometry, brush, strokeWidth, CurrentState.PlatformStrokeStyle));
 		}
 
 		protected override void PlatformDrawRectangle(float x, float y, float width, float height)
@@ -601,7 +659,8 @@ namespace Microsoft.Maui.Graphics.Platform
 			float strokeWidth = CurrentState.StrokeSize;
 			SetRect(x, y, width, height);
 
-			Draw(s => s.DrawRectangle(_rect, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
+			Draw(s => s.DrawRectangle(_rect, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle),
+				(s, brush) => s.DrawRectangle(_rect, brush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
 		}
 
 		protected override void PlatformDrawRoundedRectangle(float x, float y, float width, float height, float cornerRadius)
@@ -619,7 +678,8 @@ namespace Microsoft.Maui.Graphics.Platform
 				cornerRadius = (float)_rect.Height / 2;
 			}
 
-			Draw(s => s.DrawRoundedRectangle(_rect, cornerRadius, cornerRadius, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
+			Draw(s => s.DrawRoundedRectangle(_rect, cornerRadius, cornerRadius, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle),
+				(s, brush) => s.DrawRoundedRectangle(_rect, cornerRadius, cornerRadius, brush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
 		}
 
 		protected override void PlatformDrawEllipse(float x, float y, float width, float height)
@@ -652,14 +712,15 @@ namespace Microsoft.Maui.Graphics.Platform
 				radiusY = 0;
 			}
 
-			Draw(s => s.DrawEllipse(px, py, radiusX, radiusY, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
+			Draw(s => s.DrawEllipse(px, py, radiusX, radiusY, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle),
+				(s, brush) => s.DrawEllipse(px, py, radiusX, radiusY, brush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
 		}
 
 		private CanvasGeometry GetPath(PathF path, CanvasFilledRegionDetermination fillMode = CanvasFilledRegionDetermination.Winding)
 		{
 			var geometry = path.PlatformPath as CanvasGeometry;
 
-			if (geometry == null)
+			if (geometry is null)
 			{
 				geometry = path.AsPath(_session, fillMode);
 				path.PlatformPath = geometry;
@@ -670,17 +731,15 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		protected override void PlatformDrawPath(PathF path)
 		{
-			if (path == null)
+			if (path is null)
+			{
 				return;
+			}
 
 			var geometry = GetPath(path);
 
-			Draw(s =>
-			{
-				// ReSharper disable AccessToDisposedClosure
-				float strokeWidth = CurrentState.StrokeSize;
-				s.DrawGeometry(geometry, CurrentState.PlatformStrokeBrush, strokeWidth, CurrentState.PlatformStrokeStyle);
-			});
+			Draw(s => s.DrawGeometry(geometry, CurrentState.PlatformStrokeBrush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle),
+				(s, brush) => s.DrawGeometry(geometry, brush, CurrentState.StrokeSize, CurrentState.PlatformStrokeStyle));
 		}
 
 		protected override void PlatformRotate(float degrees, float radians, float x, float y)
@@ -721,32 +780,41 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		protected override void StateRestored(PlatformCanvasState state)
 		{
-			if (_session != null)
+			if (_session is not null)
 			{
 				state?.RestoreRenderTargetState();
 			}
 		}
 
-		private void Draw(Action<CanvasDrawingSession> drawingAction)
+		private void Draw(Action<CanvasDrawingSession> drawingAction, Action<CanvasDrawingSession, ICanvasBrush> coverageAction)
+		{
+			_blendRenderer ??= new PlatformBlendRenderer(_session, _canvasSize);
+			_blendRenderer.Draw(
+				session => DrawWithEffects(drawingAction, session),
+				(session, brush) => DrawWithEffects(s => coverageAction(s, brush), session),
+				CurrentState);
+		}
+
+		private void DrawWithEffects(Action<CanvasDrawingSession> drawingAction, CanvasDrawingSession session)
 		{
 			if (CurrentState.IsShadowed)
 			{
-				DrawShadow(drawingAction);
+				DrawShadow(drawingAction, session);
 			}
 
 			if (CurrentState.IsBlurred)
 			{
-				DrawBlurred(drawingAction);
+				DrawBlurred(drawingAction, session);
 			}
 			else
 			{
-				drawingAction(_session);
+				drawingAction(session);
 			}
 		}
 
 		private CanvasRenderTarget GetOrCreatePatternContext(global::Windows.Foundation.Size patternSize)
 		{
-			if (_patternContext != null)
+			if (_patternContext is not null)
 			{
 				// If the effect bitmap size does not equal the size of our render target, then dispose of it
 				// and create a new one.
@@ -767,7 +835,7 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		private CanvasRenderTarget GetOrCreateEffectContext()
 		{
-			if (_effectContext != null)
+			if (_effectContext is not null)
 			{
 				// If the effect bitmap size does not equal the size of our render target, then dispose of it
 				// and create a new one.
@@ -792,10 +860,10 @@ namespace Microsoft.Maui.Graphics.Platform
 			return _effectContext;
 		}
 
-		private void DrawShadow(Action<CanvasDrawingSession> drawingAction)
+		private void DrawShadow(Action<CanvasDrawingSession> drawingAction, CanvasDrawingSession session)
 		{
 			var context = GetOrCreateEffectContext();
-			if (context != null)
+			if (context is not null)
 			{
 				using (var imageSession = context.CreateDrawingSession())
 				{
@@ -804,23 +872,32 @@ namespace Microsoft.Maui.Graphics.Platform
 					drawingAction(imageSession);
 				}
 
-				if (_shadowEffect == null)
+				if (_shadowEffect is null)
+				{
 					_shadowEffect = new ShadowEffect();
+				}
 
 				_shadowEffect.Source = context;
 				_shadowEffect.BlurAmount = CurrentState.ActualShadowBlur / 3;
 				_shadowEffect.ShadowColor = CurrentState.ShadowColor;
 
-				_session.Transform = Matrix3x2.Identity;
-				_session.DrawImage(_shadowEffect, 0, 0);
-				_session.Transform = CurrentState.Matrix;
+				var transform = session.Transform;
+				try
+				{
+					session.Transform = Matrix3x2.Identity;
+					session.DrawImage(_shadowEffect, 0, 0);
+				}
+				finally
+				{
+					session.Transform = transform;
+				}
 			}
 		}
 
-		private void DrawBlurred(Action<CanvasDrawingSession> drawingAction)
+		private void DrawBlurred(Action<CanvasDrawingSession> drawingAction, CanvasDrawingSession session)
 		{
 			var context = GetOrCreateEffectContext();
-			if (context != null)
+			if (context is not null)
 			{
 				using (var imageSession = context.CreateDrawingSession())
 				{
@@ -829,16 +906,25 @@ namespace Microsoft.Maui.Graphics.Platform
 					drawingAction(imageSession);
 				}
 
-				if (_blurEffect == null)
+				if (_blurEffect is null)
+				{
 					_blurEffect = new GaussianBlurEffect();
+				}
 
 				_blurEffect.Source = context;
 				_blurEffect.BorderMode = EffectBorderMode.Soft;
 				_blurEffect.Optimization = EffectOptimization.Speed;
 
-				_session.Transform = Matrix3x2.Identity;
-				_session.DrawImage(_blurEffect, 0, 0);
-				_session.Transform = CurrentState.Matrix;
+				var transform = session.Transform;
+				try
+				{
+					session.Transform = Matrix3x2.Identity;
+					session.DrawImage(_blurEffect, 0, 0);
+				}
+				finally
+				{
+					session.Transform = transform;
+				}
 			}
 		}
 
