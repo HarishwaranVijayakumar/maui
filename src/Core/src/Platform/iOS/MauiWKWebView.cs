@@ -38,6 +38,11 @@ namespace Microsoft.Maui.Platform
 			BackgroundColor = UIColor.Clear;
 			AutosizesSubviews = true;
 
+			if (OperatingSystem.IsMacCatalyst())
+			{
+				ScrollView.AlwaysBounceVertical = false;
+			}
+
 			NavigationDelegate = new MauiWebViewNavigationDelegate(handler);
 		}
 
